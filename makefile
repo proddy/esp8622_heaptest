@@ -18,7 +18,7 @@ MAKEFLAGS+="j "
 TARGET    := heaptest
 BUILD     := build
 SOURCES   := src lib_standalone 
-INCLUDES  := lib_standalone src
+INCLUDES  := lib_standalone src lib/*
 LIBRARIES := 
 
 CPPCHECK = cppcheck
