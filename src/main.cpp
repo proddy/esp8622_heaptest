@@ -5,16 +5,16 @@
 #include <functional>
 using mqtt_cmdfunction_p = std::function<void(const char * data, const int8_t id)>;
 
-// using mqtt_cmdfunction_p = void *;
+typedef void (*mqtt_cmdfunction_p2)(const char * data, const int8_t id);
 
-struct MQTTCmdFunction {
+struct MQTTCmdFunction1 {
     uint8_t                     device_type_;
     uint8_t                     dummy1_;
     const __FlashStringHelper * dummy2_;
     const __FlashStringHelper * cmd_;
     mqtt_cmdfunction_p          mqtt_cmdfunction_;
 
-    MQTTCmdFunction(uint8_t device_type, uint8_t dummy1, const __FlashStringHelper * dummy2, const __FlashStringHelper * cmd, mqtt_cmdfunction_p mqtt_cmdfunction)
+    MQTTCmdFunction1(uint8_t device_type, uint8_t dummy1, const __FlashStringHelper * dummy2, const __FlashStringHelper * cmd, mqtt_cmdfunction_p mqtt_cmdfunction)
         : device_type_(device_type)
         , dummy1_(dummy1)
         , dummy2_(dummy2)
@@ -24,13 +24,23 @@ struct MQTTCmdFunction {
 };
 
 // no constructor
-// size on ESP8266 - 28 bytes (ubuntu 56)
+// size on ESP8266 - 28 bytes (ubuntu 56, osx 80)
 struct MQTTCmdFunction2 {
     uint8_t                     device_type_;      // 1 byte
     uint8_t                     dummy1_;           // 1 byte
     const __FlashStringHelper * dummy2_;           // 4
     const __FlashStringHelper * cmd_;              // 4
     mqtt_cmdfunction_p          mqtt_cmdfunction_; // 14
+};
+
+// no constructor - no function ptr
+// size on ESP8266 - 28 bytes (ubuntu XX, osx 32)
+struct MQTTCmdFunction3 {
+    uint8_t                     device_type_;      // 1 byte
+    uint8_t                     dummy1_;           // 1 byte
+    const __FlashStringHelper * dummy2_;           // 4
+    const __FlashStringHelper * cmd_;              // 4
+    mqtt_cmdfunction_p2         mqtt_cmdfunction_; // ?
 };
 
 // std::vector - 9336
@@ -47,7 +57,7 @@ struct MQTTCmdFunction2 {
 
 // std::deque - 7832
 #include <deque>
-static std::deque<MQTTCmdFunction> mqtt_cmdfunctions_;
+static std::deque<MQTTCmdFunction1> mqtt_cmdfunctions_;
 
 // std::array - not well suited! - can't add and can't grow
 // #include <array>
@@ -80,7 +90,7 @@ void register_mqtt_cmd(uint8_t device_type, uint8_t dummy1, const __FlashStringH
     // mf.mqtt_cmdfunction_ = f;
 
     // mqtt_cmdfunctions_.push(mf); // ustd::queue
-    // // mqtt_cmdfunctions_.add(mf); // ustd::array
+    // mqtt_cmdfunctions_.add(mf); // ustd::array
 }
 
 void myFunction(const char * data, const uint8_t id) {
@@ -125,20 +135,13 @@ void setup() {
     // mqtt_cmdfunctions_.reserve(200);
 
     for (uint8_t i = 0; i < 200; i++) {
-        // register_mqtt_cmd(F("testfunction"), myFunction1);
+        register_mqtt_cmd(i, 10, F("hi"), F("testfunction"), myFunction);
         // register_mqtt_cmd(F("testfunction"), std::bind(&myFunction1, _1, _2));
-        register_mqtt_cmd(i, 10, F("hi"), F("testfunction"), [](const char * data, const uint8_t id) { myFunction(data, id); });
+        // register_mqtt_cmd(i, 10, F("hi"), F("testfunction"), [](const char * data, const uint8_t id) { myFunction(data, id); });
     }
 
     delay(1000);
     show_mem("after");
-
-    // size
-    MQTTCmdFunction2 mf;
-    Serial.print("size of struct = ");
-    Serial.print("");
-    Serial.print(sizeof(mf));
-    Serial.println();
 
     // for arrays
     // for (uint8_t i = 0; i < 200; i++) {
@@ -168,6 +171,16 @@ void setup() {
     //     Serial.println();
     // }
 
+    Serial.println();
+
+    // size 2
+    Serial.print("size of MQTTCmdFunction2 struct = ");
+    Serial.print(sizeof(MQTTCmdFunction1));
+    Serial.println();
+
+    // size 3
+    Serial.print("size of MQTTCmdFunction3 struct = ");
+    Serial.print(sizeof(MQTTCmdFunction3));
     Serial.println();
 }
 
