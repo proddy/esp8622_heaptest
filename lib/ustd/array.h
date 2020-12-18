@@ -57,7 +57,6 @@ class array {
     unsigned int startSize;
     unsigned int maxSize;
     unsigned int incSize = ARRAY_INC_SIZE;
-    bool         shrink  = true;
     unsigned int allocSize;
     unsigned int size;
     T            bad;
@@ -70,11 +69,10 @@ class array {
     }
 
   public:
-    array(unsigned int startSize = ARRAY_INIT_SIZE, unsigned int maxSize = ARRAY_MAX_SIZE, unsigned int incSize = ARRAY_INC_SIZE, bool shrink = true)
+    array(unsigned int startSize = ARRAY_INIT_SIZE, unsigned int maxSize = ARRAY_MAX_SIZE, unsigned int incSize = ARRAY_INC_SIZE)
         : startSize(startSize)
         , maxSize(maxSize)
-        , incSize(incSize)
-        , shrink(shrink) {
+        , incSize(incSize) {
         /*!
          * Constructs an array object. All allocation-hints are optional, the
          * array class will allocate memory as needed during writes, if
@@ -86,8 +84,6 @@ class array {
          * needed.
          * @param incSize The number of array entries that are allocated as a
          * chunk if the array needs to grow
-         * @param shrink Boolean indicating, if the array should deallocate
-         * memory, if the array size shrinks (due to erase()).
          */
         size = 0;
         memset(&bad, 0, sizeof(bad));
@@ -121,15 +117,8 @@ class array {
             else
                 newSize = maxSize;
         }
-        if (!shrink) {
-            if (newSize <= allocSize)
-                return true;
-        } else {
-            if (newSize < allocSize)
-                mv = newSize;
-            else
-                mv = allocSize;
-        }
+        if (newSize <= allocSize)
+            return true;
         T * arrn = ualloc(newSize); // new T[newSize];
         if (arrn == nullptr)
             return false;
@@ -169,27 +158,6 @@ class array {
         ++size;
         return size - 1;
     }
-
-    // bool erase(unsigned int index) {
-    //     /*! Delete array element at given index
-    //      * @param index The array index of the element to be erased. The array
-    //      * size is reduced by 1, and memory might be freed, if shrink=True
-    //      * during array creation.
-    //      */
-    //     if (index >= size) {
-    //         return false;
-    //     }
-    //     for (unsigned int i = index; i < size - 1; i++) {
-    //         arr[i] = arr[i + 1];
-    //     }
-    //     --size;
-    //     if (shrink) {
-    //         if ((size < allocSize - incSize) && (allocSize > incSize)) {
-    //             resize(allocSize - incSize);
-    //         }
-    //     }
-    //     return true;
-    // }
 
     T operator[](unsigned int i) const {
         /*! Read content of array element at i, a=myArray[3] */
@@ -250,12 +218,12 @@ class array {
         return (size);
     }
 
-    // unsigned int alloclen() const {
-    //     /*! Check the number of allocated array-entries, which can be larger
-    //      * than the length of the array.
-    //      * @return number of allocated entries. */
-    //     return (allocSize);
-    // }
+    unsigned int alloclen() const {
+        /*! Check the number of allocated array-entries, which can be larger
+         * than the length of the array.
+         * @return number of allocated entries. */
+        return (allocSize);
+    }
 };
 
 
