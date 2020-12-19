@@ -1,4 +1,8 @@
-// array.h - array class
+/*
+ * Lightweight c++11 array implementation.
+ * Based on https://github.com/muwerk/ustd/blob/master/README.md
+ * Limits to max 255 entries
+ */
 #pragma once
 
 namespace ustd {
@@ -7,61 +11,54 @@ namespace ustd {
 #define ARRAY_MAX_SIZE 65535 // 65535 or 4294967295 (mostly)
 #define ARRAY_INIT_SIZE 16
 
-/*! \brief Lightweight c++11 array implementation.
+template <typename T>
+class arrayIterator {
+  public:
+    arrayIterator(T * values_ptr)
+        : values_ptr_{values_ptr}
+        , position_{0} {
+    }
 
-array.h is a minimal, yet highly portable array data type implementation
-that runs well on architectures with very limited resources such as attiny 8kb
-avr.
+    arrayIterator(T * values_ptr, size_t size)
+        : values_ptr_{values_ptr}
+        , position_{size} {
+    }
 
-The array class either:
+    bool operator!=(const arrayIterator<T> & other) const {
+        return !(*this == other);
+    }
 
-* * allocates memory dynamically on array-writes or array-reads, or
-* * work in fully static mode without any dynamic allocation once the array
-object has been created.
+    bool operator==(const arrayIterator<T> & other) const {
+        return position_ == other.position_;
+    }
 
-The library header-only.
+    arrayIterator & operator++() {
+        ++position_;
+        return *this;
+    }
 
-Make sure to provide the <a
-href="https://github.com/muwerk/ustd/blob/master/README.md">required platform
-define</a> before including ustd headers.
+    T & operator*() const {
+        return *(values_ptr_ + position_);
+    }
 
-## An example for dynamic mode:
+  private:
+    T *    values_ptr_;
+    size_t position_;
+};
 
-~~~{.cpp}
-#define __ATTINY__ 1   // Platform defines required, see doc, mainpage.
-#include <array.h>
-
-ustd::array<int> intArray;
-
-intArray[0] = 13; // Memory for array[0] is allocated
-intArray.add(3);  // the array is extended, if necessary
-int p = intArray[0];
-
-printf("[0]:%d [1]:%d length=%d\n", intArray[0], intArray[1], intArray.length())
-~~~
-
-## An example for static mode
-
-~~~{.cpp}
-#include <array.h>
-
-// array length is fixed 5 (startSize==maxSize), no dynamic extensions:
-ustd::array<int> intArray = ustd::array<int>(5, 5, 0, false);
-~~~
- */
 
 template <typename T>
 class array {
   private:
-    T *          arr;
-    unsigned int startSize;
-    unsigned int maxSize;
-    unsigned int incSize = ARRAY_INC_SIZE;
-    unsigned int allocSize;
-    unsigned int size;
-    T            bad;
+    T *     arr;
+    uint8_t startSize;
+    uint8_t maxSize;
+    uint8_t incSize = ARRAY_INC_SIZE;
+    uint8_t allocSize;
+    uint8_t size;
+    T       bad;
 
-    T * ualloc(unsigned int n) {
+    T * ualloc(uint8_t n) {
         return new T[n];
     }
     void ufree(T * p) {
@@ -69,7 +66,7 @@ class array {
     }
 
   public:
-    array(unsigned int startSize = ARRAY_INIT_SIZE, unsigned int maxSize = ARRAY_MAX_SIZE, unsigned int incSize = ARRAY_INC_SIZE)
+    array(uint8_t startSize = ARRAY_INIT_SIZE, uint8_t maxSize = ARRAY_MAX_SIZE, uint8_t incSize = ARRAY_INC_SIZE)
         : startSize(startSize)
         , maxSize(maxSize)
         , incSize(incSize) {
@@ -101,7 +98,7 @@ class array {
         }
     }
 
-    bool resize(unsigned int newSize) {
+    bool resize(uint8_t newSize) {
         /*! Change the array allocation size.
          *
          * Note: Usage of this function is optional for optimization. By
@@ -110,7 +107,7 @@ class array {
          * @param newSize the new number of array entries, corresponding memory
          * is allocated/freed as necessary.
          */
-        unsigned int mv = newSize;
+        uint8_t mv = newSize;
         if (newSize > maxSize) {
             if (maxSize == allocSize)
                 return false;
@@ -122,7 +119,7 @@ class array {
         T * arrn = ualloc(newSize); // new T[newSize];
         if (arrn == nullptr)
             return false;
-        for (unsigned int i = 0; i < mv; i++) {
+        for (uint8_t i = 0; i < mv; i++) {
             arrn[i] = arr[i];
         }
         ufree(arr);
@@ -159,14 +156,9 @@ class array {
         return size - 1;
     }
 
-    T operator[](unsigned int i) const {
+    T operator[](uint8_t i) const {
         /*! Read content of array element at i, a=myArray[3] */
         if (i >= allocSize) {
-            if (incSize == 0) {
-#ifdef USTD_ASSERT
-                assert(i < allocSize);
-#endif
-            }
             if (!resize(allocSize + incSize)) {
 #ifdef USTD_ASSERT
                 assert(i < allocSize);
@@ -181,14 +173,9 @@ class array {
         return arr[i];
     }
 
-    T & operator[](unsigned int i) {
+    T & operator[](uint8_t i) {
         /*! Assign content of array element at i, e.g. myArray[3]=3 */
         if (i >= allocSize) {
-            if (incSize == 0) {
-#ifdef USTD_ASSERT
-                assert(i < allocSize);
-#endif
-            }
             if (!resize(allocSize + incSize)) {
 #ifdef USTD_ASSERT
                 assert(i < allocSize);
@@ -212,17 +199,35 @@ class array {
             return false;
     }
 
-    unsigned int length() const {
+    uint8_t length() const {
         /*! Check number of array-members.
         @return number of array entries */
         return (size);
     }
 
-    unsigned int alloclen() const {
+    uint8_t alloclen() const {
         /*! Check the number of allocated array-entries, which can be larger
          * than the length of the array.
          * @return number of allocated entries. */
         return (allocSize);
+    }
+
+    typedef arrayIterator<T> iterator;
+    iterator                 begin() {
+        return iterator(arr);
+    }
+
+    iterator end() {
+        return iterator(arr, size);
+    }
+
+    typedef arrayIterator<const T> const_iterator;
+    const_iterator                 begin() const {
+        return const_iterator(arr);
+    }
+
+    const_iterator end() const {
+        return const_iterator(arr, size);
     }
 };
 

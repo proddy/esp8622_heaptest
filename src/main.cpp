@@ -133,7 +133,7 @@ void myFunction(const char * data, uint8_t id) {
     Serial.print(data);
     Serial.print(" ");
     Serial.print(id);
-    Serial.print(",");
+    Serial.print(" ");
 }
 
 static uint32_t heap_start_;
@@ -175,7 +175,7 @@ void setup() {
     for (uint8_t i = 0; i < 200; i++) {
         // register_mqtt_cmd(i, 10, F("hi"), F("testfunction"), myFunction);
 
-        register_mqtt_cmd_direct(i, 10, F("hi"), F("testfunction"), myFunction);
+        register_mqtt_cmd_direct(i + 1, 10, F("hi"), F("testfunction"), myFunction);
 
         // register_mqtt_cmd(i, 10, F("hi"), F("testfunction"), std::bind(&myFunction, std::placeholders::_1, std::placeholders::_2));
 
@@ -185,21 +185,22 @@ void setup() {
     delay(200);
     show_mem("after");
 
-    // for arrays
-    for (uint8_t i = 0; i < 200; i++) {
-        (mqtt_cmdfunctions_[i].mqtt_cmdfunction_)("hello", i);
-    }
+    // for fixed arrays
+    // for (uint8_t i = 0; i < 200; i++) {
+    //     (mqtt_cmdfunctions_[i].mqtt_cmdfunction_)("hello", i);
+    // }
+    // Serial.println();
 
     // for containers
-    // uint8_t i = 0;
-    // for (auto & mf : mqtt_cmdfunctions_) {
-    //     (mf.mqtt_cmdfunction_)("hello", i++);
-    // }
+    uint8_t i = 0;
+    for (const STRUCT mf : mqtt_cmdfunctions_) {
+        (mf.mqtt_cmdfunction_)("iterator", mf.device_type_);
+    }
 
     // for ustd::queue
     // for (uint8_t i = 0; i < 200; i++) {
     //     auto mf = mqtt_cmdfunctions_.pop();
-    //     (mf.mqtt_cmdfunction_)("hello", i++);
+    //     (mf.mqtt_cmdfunction_)("hello", mf.device_type_);
     // }
 
     Serial.println();
