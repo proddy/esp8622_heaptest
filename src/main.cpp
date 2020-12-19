@@ -5,7 +5,7 @@
 #include <functional>
 using mqtt_cmdfunction_p = std::function<void(const char * data, const int8_t id)>;
 
-typedef void (*mqtt_cmdfunction_p2)(const char * data, const int8_t id);
+using mqtt_cmdfunction_p_direct = void (*)(const char *, uint8_t);
 
 // with constructor
 struct MQTTCmdFunction1 {
@@ -41,10 +41,10 @@ struct MQTTCmdFunction3 {
     uint8_t                     dummy1_;           // 1 byte
     const __FlashStringHelper * dummy2_;           // 4
     const __FlashStringHelper * cmd_;              // 4
-    mqtt_cmdfunction_p2         mqtt_cmdfunction_; // 6
+    mqtt_cmdfunction_p_direct   mqtt_cmdfunction_; // 6
 };
 
-#define STRUCT MQTTCmdFunction2
+#define STRUCT MQTTCmdFunction3
 
 // std::vector - 9336
 // #include <vector>
@@ -83,7 +83,31 @@ static ustd::array<STRUCT> mqtt_cmdfunctions_ = ustd::array<STRUCT>(200, 200, 0)
 // #include "queue.h"
 // static ustd::queue<STRUCT> mqtt_cmdfunctions_ = ustd::queue<STRUCT>(200);
 
+/*
 void register_mqtt_cmd(uint8_t device_type, uint8_t dummy1, const __FlashStringHelper * dummy2, const __FlashStringHelper * cmd, mqtt_cmdfunction_p f) {
+    // mqtt_cmdfunctions_.emplace_back(device_type, dummy1, dummy2, cmd, f); // std::list and std::vector
+
+    // mqtt_cmdfunctions_.emplace(device_type, dummy1, dummy2, cmd, f); // std::queue
+
+    // mqtt_cmdfunctions_.emplace_back(device_type, dummy1, dummy2, cmd, f); // std::deque
+
+    // auto mf = MQTTCmdFunction(device_type, dummy1, dummy2, cmd, f); // Vector.h
+    // mqtt_cmdfunctions_.push_back(mf); // Vector.h
+
+    STRUCT mf;
+    mf.device_type_ = device_type;
+    mf.dummy1_      = dummy1;
+    mf.dummy2_      = dummy2;
+    mf.cmd_         = cmd;
+    mf.mqtt_cmdfunction_ = f;
+
+    // mqtt_cmdfunctions_.push(mf); // ustd::queue
+
+    mqtt_cmdfunctions_.add(mf); // ustd::array
+}
+*/
+
+void register_mqtt_cmd_direct(uint8_t device_type, uint8_t dummy1, const __FlashStringHelper * dummy2, const __FlashStringHelper * cmd, mqtt_cmdfunction_p_direct f) {
     // mqtt_cmdfunctions_.emplace_back(device_type, dummy1, dummy2, cmd, f); // std::list and std::vector
 
     // mqtt_cmdfunctions_.emplace(device_type, dummy1, dummy2, cmd, f); // std::queue
@@ -105,7 +129,7 @@ void register_mqtt_cmd(uint8_t device_type, uint8_t dummy1, const __FlashStringH
     mqtt_cmdfunctions_.add(mf); // ustd::array
 }
 
-void myFunction(const char * data, const uint8_t id) {
+void myFunction(const char * data, uint8_t id) {
     Serial.print(data);
     Serial.print(" ");
     Serial.print(id);
@@ -141,7 +165,7 @@ void setup() {
     heap_start_ = ESP.getFreeHeap();
 #endif
     show_mem("before");
-    delay(1000);
+    delay(200);
 
     // reserve
     // mqtt_cmdfunctions_.reserve(200);
@@ -149,19 +173,21 @@ void setup() {
     // fill container
     // with ustd::queue, bind uses 3760, lambda 2160 and direct 560 bytes
     for (uint8_t i = 0; i < 200; i++) {
-        register_mqtt_cmd(i, 10, F("hi"), F("testfunction"), myFunction);
+        // register_mqtt_cmd(i, 10, F("hi"), F("testfunction"), myFunction);
+
+        register_mqtt_cmd_direct(i, 10, F("hi"), F("testfunction"), myFunction);
 
         // register_mqtt_cmd(i, 10, F("hi"), F("testfunction"), std::bind(&myFunction, std::placeholders::_1, std::placeholders::_2));
 
         // register_mqtt_cmd(i, 10, F("hi"), F("testfunction"), [](const char * data, const uint8_t id) { myFunction(data, id); });
     }
 
-    delay(1000);
+    delay(200);
     show_mem("after");
 
     // for arrays
     for (uint8_t i = 0; i < 200; i++) {
-        (mqtt_cmdfunctions_[i].mqtt_cmdfunction_)("hello", i++);
+        (mqtt_cmdfunctions_[i].mqtt_cmdfunction_)("hello", i);
     }
 
     // for containers
