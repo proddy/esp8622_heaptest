@@ -189,6 +189,62 @@ void show_mem(const char * note) {
     Serial.flush();
 }
 
+// prints the contents of the queue
+void print_queue(const char * s, ustd::queue<uint8_t> & myQueue) {
+    Serial.print(s);
+    Serial.print(": ");
+    for (const uint8_t & element : myQueue) {
+        Serial.print(element);
+        Serial.print(", ");
+    }
+    Serial.print("size=");
+    Serial.print(myQueue.size());
+    Serial.println();
+
+    // old fashioned way
+    Serial.print("traverse queue: ");
+    for (uint8_t i = 0; i < myQueue.size(); i++) {
+        Serial.print(myQueue[i]);
+        Serial.print(", ");
+    }
+    Serial.println();
+}
+
+void queue_test() {
+    // queue test
+    ustd::queue<uint8_t> myQueue = ustd::queue<uint8_t>(20);
+    myQueue.push(1);
+    myQueue.push(3);
+    myQueue.push(5);
+    myQueue.push(9);
+    myQueue.push(11);
+
+    print_queue("normal", myQueue);
+    myQueue.push(12);
+    print_queue("add 12", myQueue);
+    Serial.print("Popping, Got ");
+    Serial.println(myQueue.pop());
+    Serial.print("Popping, Got ");
+    Serial.println(myQueue.pop());
+    print_queue("queue is now", myQueue);
+    myQueue.push_back(13);
+    print_queue("add 13", myQueue);
+    myQueue.push_front(21);
+    print_queue("add 21 to front", myQueue);
+    myQueue.push_front(22);
+    print_queue("add 22 to front", myQueue);
+    Serial.print("Popping, Got ");
+    Serial.println(myQueue.pop());
+
+    // queue test2
+    Serial.println();
+    ustd::queue<uint8_t> myQueue2 = ustd::queue<uint8_t>(20);
+    myQueue2.push_front(44);
+    print_queue("add 44 to front", myQueue2);
+    Serial.print("Popping, Got ");
+    Serial.println(myQueue2.pop());
+}
+
 void setup() {
 #ifndef STANDALONE
     Serial.begin(115200);
@@ -230,6 +286,8 @@ void setup() {
     Serial.print(mem_used / NUM_ENTRIES);
 #endif
     Serial.println();
+
+    queue_test();
 }
 
 void loop() {

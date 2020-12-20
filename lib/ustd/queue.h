@@ -11,14 +11,9 @@ namespace ustd {
 template <typename T>
 class queueIterator {
   public:
-    queueIterator(T * values_ptr)
+    queueIterator(T * values_ptr, uint8_t p)
         : values_ptr_{values_ptr}
-        , position_{0} {
-    }
-
-    queueIterator(T * values_ptr, size_t size_)
-        : values_ptr_{values_ptr}
-        , position_{size_} {
+        , position_{p} {
     }
 
     bool operator!=(const queueIterator<T> & other) const {
@@ -39,24 +34,24 @@ class queueIterator {
     }
 
   private:
-    T *    values_ptr_;
-    size_t position_;
+    T *     values_ptr_;
+    uint8_t position_;
 };
 
 template <class T>
 class queue {
   private:
-    T *          que_;
-    unsigned int peakSize_;
-    unsigned int maxSize_;
-    unsigned int size_;
-    unsigned int quePtr0_;
-    unsigned int quePtr1_;
-    T            bad_;
+    T *     que_;
+    uint8_t peakSize_;
+    uint8_t maxSize_;
+    uint8_t size_;
+    uint8_t quePtr0_; // back
+    uint8_t quePtr1_; // front
+    T       bad_;
 
   public:
     // Constructs a queue object with the maximum number of <T> pointer entries
-    queue(unsigned int maxQueueSize)
+    queue(uint8_t maxQueueSize)
         : maxSize_(maxQueueSize) {
         memset(&bad_, 0, sizeof(bad_));
         quePtr0_  = 0;
@@ -91,6 +86,39 @@ class queue {
         return true;
     }
 
+    bool push_back(T ent) {
+        return push(ent);
+    }
+
+    // Push a new entry into the front of queue, moving the rest down
+    // true on success, false if queue is full
+    // there are no good checks for overflow
+    bool push_front(T ent) {
+        if (size_ >= maxSize_) {
+            return false;
+        }
+        // Serial.print("pointer1: ");
+        // Serial.print(quePtr0_);
+        // Serial.print(" pointer2: ");
+        // Serial.print(quePtr1_);
+        // Serial.println();
+
+        for (uint8_t i = 0; i <= size_; i++) {
+            que_[quePtr1_ - i + 1] = que_[quePtr1_ - i]; // move the rest up 1
+        }
+        que_[quePtr0_] = ent; // add the new one
+        quePtr1_       = (quePtr1_ + 1) % maxSize_;
+        ++size_;
+        if (size_ > peakSize_) {
+            peakSize_ = size_;
+        }
+        return true;
+    }
+
+    T & operator[](unsigned int i) {
+        return que_[i + quePtr0_];
+    }
+
     // Pop the oldest entry from the queue
     T pop() {
         if (size_ == 0)
@@ -122,29 +150,29 @@ class queue {
     }
 
     // returns number of entries in the queue
-    unsigned int size() {
+    uint8_t size() {
         return (size_);
     }
 
     // max number of queue entries that have been in the queue
-    unsigned int peak() {
+    uint8_t peak() {
         return (peakSize_);
     }
 
     // iterators
     queueIterator<T> begin() {
-        return queueIterator<T>(que_);
+        return queueIterator<T>(que_, quePtr0_);
     }
     queueIterator<T> end() {
-        return queueIterator<T>(que_, size_);
+        return queueIterator<T>(que_, quePtr0_ + size_);
     }
 
     queueIterator<const T> begin() const {
-        return queueIterator<const T>(que_);
+        return queueIterator<const T>(que_, quePtr0_);
     }
 
     queueIterator<const T> end() const {
-        return queueIterator<const T>(que_, size_);
+        return queueIterator<const T>(que_, quePtr0_ + size_);
     }
 };
 
