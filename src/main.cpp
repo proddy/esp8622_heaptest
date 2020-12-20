@@ -103,12 +103,17 @@ struct MQTTCmdFunction_constructor {
 //  with 3 (direct function)
 //           3520, 0 (201, 255, 16), 0% frag, 17 bytes per element
 //           3648, 0 (16, 255, 16) with 12% frag! 18 bytes per element
-//  with 2: 7552, 1699 (lambda)
-//  with 2: 9152, 3299 (bind) <-- the worst!
-//  with 2: 5952, 0 (direct function)
+//           3712, 1792 (100, 255, 16) 4% frag, starting at 100 elements and growing, 18 bytes per element
+//  with 2: 7520, 1600 (lambda) 1% frag, 37 bytes per element
+//          9120, 3200 (bind) 1% frag, 45 bytes per element <-- the worst
+//          5920, 0, 0% frag (direct function) 29 bytes per element
+//
+// conclusion: use C function pointers, try to avoid growing because of fragmentation. but it's not too bad.
+//
 #include "array.h"
-static ustd::array<MQTTCmdFunction> mqtt_cmdfunctions_ = ustd::array<MQTTCmdFunction>(NUM_ENTRIES, 255, 16);
+// static ustd::array<MQTTCmdFunction> mqtt_cmdfunctions_ = ustd::array<MQTTCmdFunction>(NUM_ENTRIES, 255, 16);
 // static ustd::array<MQTTCmdFunction> mqtt_cmdfunctions_; // same as (16, 255, 16)
+static ustd::array<MQTTCmdFunction> mqtt_cmdfunctions_ = ustd::array<MQTTCmdFunction>(100, 255, 16); // start 100 and grow
 
 // CODE below
 
@@ -171,8 +176,6 @@ void setup() {
 #endif
     show_mem("boot");
 
-    // mqtt_cmdfunctions_ = ustd::array<MQTTCmdFunction>(201, 255, 16);
-
     // fill container
     show_mem("before");
     for (uint8_t i = 1; i <= NUM_ENTRIES; i++) {
@@ -181,9 +184,9 @@ void setup() {
 #endif
 
 #if STRUCT_NUM == 2
-        register_mqtt_cmd(i, 10, F("hi"), F("tf2"), myFunction);
+        // register_mqtt_cmd(i, 10, F("hi"), F("tf2"), myFunction);
         // register_mqtt_cmd(i, 10, F("hi"), F("tf2"), std::bind(&myFunction, std::placeholders::_1, std::placeholders::_2));
-        // register_mqtt_cmd(i, 10, F("hi"), F("tf2"), [](const char * data, const int8_t id) { myFunction(data, id); });
+        register_mqtt_cmd(i, 10, F("hi"), F("tf2"), [](const char * data, const int8_t id) { myFunction(data, id); });
 #endif
     }
     show_mem("after");
