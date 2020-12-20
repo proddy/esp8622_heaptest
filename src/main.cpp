@@ -71,34 +71,38 @@ struct MQTTCmdFunction_constructor {
 */
 
 // std::vector
-// with 2 (C style function pointers)
 // memory (since boot/of which is inplace) in bytes:
-//  with 3 (direct function)
-//     4416, 4104, frag 9%, 22 bytes per element
+// with 2 (C style function pointers)
+//
+// with 3 (direct function)
+//      4416, 4104, frag 9%, 22 bytes per element
 // #include <vector>
 // static std::vector<MQTTCmdFunction> mqtt_cmdfunctions_;
 
 // std::list (is worst than queue and deque)
-// with 2 (C style function pointers)
 // memory (since boot/of which is inplace) in bytes:
-//  with 3 (direct function)
-//     6712, 6400, frag 0%, 33 bytes per element
+// with 2 (C style function pointers)
+//
+// with 3 (direct function)
+//      6712, 6400, frag 0%, 33 bytes per element
 // #include <list>
 // static std::list<MQTTCmdFunction> mqtt_cmdfunctions_;
 
 // std::queue (is best from the std:: library with 20 bytes per element)
-// with 2 (C style function pointers)
 // memory (since boot/of which is inplace) in bytes:
-//  with 3 (direct function)
-//     4032, 3160, frag 1%, 20 bytes per element
+// with 2 (C style function pointers)
+//
+// with 3 (direct function)
+//      4032, 3160, frag 1%, 20 bytes per element
 // #include <queue>
 // static std::queue<MQTTCmdFunction> mqtt_cmdfunctions_;
 
 // std::deque (is worst than queue!)
-// with 2 (C style function pointers)
 // memory (since boot/of which is inplace) in bytes:
-//  with 3 (direct function)
-//     4552, 3680, frag 1%, 22 bytes per element
+// with 2 (C style function pointers)
+//
+// with 3 (direct function)
+//      4552, 3680, frag 1%, 22 bytes per element
 // #include <deque>
 // static std::deque<MQTTCmdFunction> mqtt_cmdfunctions_;
 
@@ -108,23 +112,23 @@ struct MQTTCmdFunction_constructor {
 
 // ustd queue.h (better than std::list)
 // memory (since boot/of which is inplace) in bytes:
-//  with 2:
-//         TBD
-//  with 3:
-//         3520, 0, frag 0%, 17 bytes per element
+// with 2
+//      TBD
+// with 3
+//      3520, 0, frag 0%, 17 bytes per element
 #include "queue.h"
 static ustd::queue<MQTTCmdFunction> mqtt_cmdfunctions_ = ustd::queue<MQTTCmdFunction>(NUM_ENTRIES);
 
 // ustd array.h
 // memory (since boot/of which is inplace) in bytes:
-//  with 3:
-//         3520, 0 (201, 255, 16), 0% frag, 17 bytes per element
-//         3648, 0 (16, 255, 16) with 12% frag! 18 bytes per element
-//         3712, 1792 (100, 255, 16) 4% frag, starting at 100 elements and growing, 18 bytes per element
-//  with 2:
-//         7520, 1600 (lambda) 1% frag, 37 bytes per element
-//         9120, 3200 (bind) 1% frag, 45 bytes per element <-- the worst
-//         5920, 0, 0% frag (direct function) 29 bytes per element
+// with 3
+//      3520, 0 (201, 255, 16), 0% frag, 17 bytes per element
+//      3648, 0 (16, 255, 16) with 12% frag! 18 bytes per element
+//      3712, 1792 (100, 255, 16) 4% frag, starting at 100 elements and growing, 18 bytes per element
+// with 2
+//      7520, 1600 (lambda) 1% frag, 37 bytes per element
+//      9120, 3200 (bind) 1% frag, 45 bytes per element <-- the worst
+//      5920, 0, 0% frag (direct function) 29 bytes per element
 //
 // conclusion: use C function pointers, try to avoid growing because of fragmentation. but it's not too bad.
 //
@@ -133,7 +137,9 @@ static ustd::queue<MQTTCmdFunction> mqtt_cmdfunctions_ = ustd::queue<MQTTCmdFunc
 // static ustd::array<MQTTCmdFunction> mqtt_cmdfunctions_; // same as (16, 255, 16)
 // static ustd::array<MQTTCmdFunction> mqtt_cmdfunctions_ = ustd::array<MQTTCmdFunction>(100, 255, 16); // start 100 and grow
 
+//
 // CODE below
+//
 
 void register_mqtt_cmd(uint8_t device_type, uint8_t dummy1, const __FlashStringHelper * dummy2, const __FlashStringHelper * cmd, mqtt_cmdfunction_p f) {
     MQTTCmdFunction mf;
@@ -149,10 +155,9 @@ void register_mqtt_cmd(uint8_t device_type, uint8_t dummy1, const __FlashStringH
     // mqtt_cmdfunctions_.emplace_back(device_type, dummy1, dummy2, cmd, f); // std::deque
 
     // mqtt_cmdfunctions_.push_back(mf); // std::vector std::list
-    // mqtt_cmdfunctions_.push(mf); // std::queue
     // mqtt_cmdfunctions_.push_front(mf); // std::deque
 
-    mqtt_cmdfunctions_.push(mf); // ustd::queue and ustd::array
+    mqtt_cmdfunctions_.push(mf); // ustd::queue and ustd::array std::queue
 }
 
 // call back functions
