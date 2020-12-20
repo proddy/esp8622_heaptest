@@ -1,14 +1,18 @@
 /*
  * Lightweight c++11 array implementation.
- * Based on https://github.com/muwerk/ustd/blob/master/README.md
+ * Based on https://github.com/muwerk/ustd
  * Limits to max 255 entries
  */
 #pragma once
 
+#if defined USTD_ASSERT
+#include <assert.h>
+#endif
+
 namespace ustd {
 
 #define ARRAY_INC_SIZE 16
-#define ARRAY_MAX_SIZE 65535 // 65535 or 4294967295 (mostly)
+#define ARRAY_MAX_SIZE 255
 #define ARRAY_INIT_SIZE 16
 
 template <typename T>
@@ -45,7 +49,6 @@ class arrayIterator {
     T *    values_ptr_;
     size_t position_;
 };
-
 
 template <typename T>
 class array {
@@ -156,9 +159,14 @@ class array {
         return size - 1;
     }
 
-    T operator[](uint8_t i) const {
+    T operator[](unsigned int i) const {
         /*! Read content of array element at i, a=myArray[3] */
         if (i >= allocSize) {
+            if (incSize == 0) {
+#ifdef USTD_ASSERT
+                assert(i < allocSize);
+#endif
+            }
             if (!resize(allocSize + incSize)) {
 #ifdef USTD_ASSERT
                 assert(i < allocSize);
@@ -173,9 +181,14 @@ class array {
         return arr[i];
     }
 
-    T & operator[](uint8_t i) {
+    T & operator[](unsigned int i) {
         /*! Assign content of array element at i, e.g. myArray[3]=3 */
         if (i >= allocSize) {
+            if (incSize == 0) {
+#ifdef USTD_ASSERT
+                assert(i < allocSize);
+#endif
+            }
             if (!resize(allocSize + incSize)) {
 #ifdef USTD_ASSERT
                 assert(i < allocSize);
@@ -224,22 +237,19 @@ class array {
     // }
 
     // iterators
-    typedef arrayIterator<T> iterator;
-    iterator                 begin() {
-        return iterator(arr);
+    arrayIterator<T> begin() {
+        return arrayIterator<T>(arr);
+    }
+    arrayIterator<T> end() {
+        return arrayIterator<T>(arr, size);
     }
 
-    iterator end() {
-        return iterator(arr, size);
+    arrayIterator<const T> begin() const {
+        return arrayIterator<const T>(arr);
     }
 
-    typedef arrayIterator<const T> const_iterator;
-    const_iterator                 begin() const {
-        return const_iterator(arr);
-    }
-
-    const_iterator end() const {
-        return const_iterator(arr, size);
+    arrayIterator<const T> end() const {
+        return arrayIterator<const T>(arr, size);
     }
 };
 
