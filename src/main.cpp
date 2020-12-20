@@ -40,7 +40,7 @@ struct MQTTCmdFunction {
 
 #if STRUCT_NUM == 3
 using mqtt_cmdfunction_p = void (*)(const char *, const int8_t);
-// no constructor, no std::function but function ptr
+// no constructor, using C style function pointers instead of std::function
 // size on ESP8266 - 16 bytes (ubuntu 32, osx 32)
 struct MQTTCmdFunction {
     uint8_t                     device_type_;      // 1 byte
@@ -70,50 +70,68 @@ struct MQTTCmdFunction_constructor {
 };
 */
 
-// std::vector - 9336
+// std::vector
+// with 2 (C style function pointers)
+// memory (since boot/of which is inplace) in bytes:
+//  with 3 (direct function)
+//     4416, 4104, frag 9%, 22 bytes per element
 // #include <vector>
-// static std::vector<STRUCT> mqtt_cmdfunctions_;
+// static std::vector<MQTTCmdFunction> mqtt_cmdfunctions_;
 
-// std::list - 10160
+// std::list (is worst than queue and deque)
+// with 2 (C style function pointers)
+// memory (since boot/of which is inplace) in bytes:
+//  with 3 (direct function)
+//     6712, 6400, frag 0%, 33 bytes per element
 // #include <list>
-// static std::list<STRUCT> mqtt_cmdfunctions_;
+// static std::list<MQTTCmdFunction> mqtt_cmdfunctions_;
 
-// std::queue - 7832
+// std::queue (is best from the std:: library with 20 bytes per element)
+// with 2 (C style function pointers)
+// memory (since boot/of which is inplace) in bytes:
+//  with 3 (direct function)
+//     4032, 3160, frag 1%, 20 bytes per element
 // #include <queue>
-// static std::queue<STRUCT> mqtt_cmdfunctions_;
+// static std::queue<MQTTCmdFunction> mqtt_cmdfunctions_;
 
-// std::deque - 7832, 6232
+// std::deque (is worst than queue!)
+// with 2 (C style function pointers)
+// memory (since boot/of which is inplace) in bytes:
+//  with 3 (direct function)
+//     4552, 3680, frag 1%, 22 bytes per element
 // #include <deque>
-// static std::deque<STRUCT> mqtt_cmdfunctions_;
+// static std::deque<MQTTCmdFunction> mqtt_cmdfunctions_;
 
 // std::array - not well suited! - can't add and can't grow
 // #include <array>
 // static std::array<STRUCT, 200> mqtt_cmdfunctions_;
 
-// home grown Vector - doesn't use heap so not suitable
-// #include <Vector.h>
-// static Vector<STRUCT> mqtt_cmdfunctions_;
-
-// ustd queue.h - not dynamic, only fixed size - 2160 (same as array) - or 560 when not using bind::
-// #include "queue.h"
-// static ustd::queue<STRUCT> mqtt_cmdfunctions_ = ustd::queue<STRUCT>(200);
-
-// ustd array.h - fixed size - 2160, or 560 when not using bind::
+// ustd queue.h (better than std::list)
 // memory (since boot/of which is inplace) in bytes:
-//  with 3 (direct function)
-//           3520, 0 (201, 255, 16), 0% frag, 17 bytes per element
-//           3648, 0 (16, 255, 16) with 12% frag! 18 bytes per element
-//           3712, 1792 (100, 255, 16) 4% frag, starting at 100 elements and growing, 18 bytes per element
-//  with 2: 7520, 1600 (lambda) 1% frag, 37 bytes per element
-//          9120, 3200 (bind) 1% frag, 45 bytes per element <-- the worst
-//          5920, 0, 0% frag (direct function) 29 bytes per element
+//  with 2:
+//         TBD
+//  with 3:
+//         3520, 0, frag 0%, 17 bytes per element
+#include "queue.h"
+static ustd::queue<MQTTCmdFunction> mqtt_cmdfunctions_ = ustd::queue<MQTTCmdFunction>(NUM_ENTRIES);
+
+// ustd array.h
+// memory (since boot/of which is inplace) in bytes:
+//  with 3:
+//         3520, 0 (201, 255, 16), 0% frag, 17 bytes per element
+//         3648, 0 (16, 255, 16) with 12% frag! 18 bytes per element
+//         3712, 1792 (100, 255, 16) 4% frag, starting at 100 elements and growing, 18 bytes per element
+//  with 2:
+//         7520, 1600 (lambda) 1% frag, 37 bytes per element
+//         9120, 3200 (bind) 1% frag, 45 bytes per element <-- the worst
+//         5920, 0, 0% frag (direct function) 29 bytes per element
 //
 // conclusion: use C function pointers, try to avoid growing because of fragmentation. but it's not too bad.
 //
-#include "array.h"
+// #include "array.h"
 // static ustd::array<MQTTCmdFunction> mqtt_cmdfunctions_ = ustd::array<MQTTCmdFunction>(NUM_ENTRIES, 255, 16);
 // static ustd::array<MQTTCmdFunction> mqtt_cmdfunctions_; // same as (16, 255, 16)
-static ustd::array<MQTTCmdFunction> mqtt_cmdfunctions_ = ustd::array<MQTTCmdFunction>(100, 255, 16); // start 100 and grow
+// static ustd::array<MQTTCmdFunction> mqtt_cmdfunctions_ = ustd::array<MQTTCmdFunction>(100, 255, 16); // start 100 and grow
 
 // CODE below
 
@@ -125,12 +143,16 @@ void register_mqtt_cmd(uint8_t device_type, uint8_t dummy1, const __FlashStringH
     mf.cmd_              = cmd;
     mf.mqtt_cmdfunction_ = f; // 2 - with using std::function, 3 with normal C function pointer
 
+    // emplaces's
     // mqtt_cmdfunctions_.emplace_back(device_type, dummy1, dummy2, cmd, f); // std::list and std::vector
     // mqtt_cmdfunctions_.emplace(device_type, dummy1, dummy2, cmd, f); // std::queue
     // mqtt_cmdfunctions_.emplace_back(device_type, dummy1, dummy2, cmd, f); // std::deque
-    // mqtt_cmdfunctions_.push_back(mf); // Vector.h
-    // mqtt_cmdfunctions_.push(mf); // ustd::queue
-    mqtt_cmdfunctions_.add(mf); // ustd::array
+
+    // mqtt_cmdfunctions_.push_back(mf); // std::vector std::list
+    // mqtt_cmdfunctions_.push(mf); // std::queue
+    // mqtt_cmdfunctions_.push_front(mf); // std::deque
+
+    mqtt_cmdfunctions_.push(mf); // ustd::queue and ustd::array
 }
 
 // call back functions
@@ -191,27 +213,16 @@ void setup() {
     }
     show_mem("after");
 
-    // for fixed arrays
-    // for (uint8_t i = 0; i < NUM_ENTRIES; i++) {
-    //     (mqtt_cmdfunctions_[i].mqtt_cmdfunction_)("hello", i);
-    // }
-    // Serial.println();
-
-    // for containers
+    // using container iterators
+    Serial.print("number of elements = ");
+    Serial.print(mqtt_cmdfunctions_.size());
+    Serial.println();
     for (const MQTTCmdFunction & mf : mqtt_cmdfunctions_) {
         (mf.mqtt_cmdfunction_)(uuid::read_flash_string(mf.cmd_).c_str(), mf.device_type_);
     }
-
-    // for ustd::queue
-    /*
-    for (uint8_t i = 0; i < NUM_ENTRIES; i++) {
-        auto mf = mqtt_cmdfunctions_.pop();
-        (mf.mqtt_cmdfunction_)("iterator2", mf.device_type_);
-    }
-*/
     Serial.println();
 
-    // size 2
+    // sizes
     Serial.print("size of struct = ");
     Serial.print(sizeof(MQTTCmdFunction));
 #ifndef STANDALONE

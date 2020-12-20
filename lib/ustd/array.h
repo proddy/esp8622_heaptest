@@ -1,5 +1,5 @@
 /*
- * Lightweight c++11 array implementation.
+ * Lightweight c++11 array implementation
  * Based on https://github.com/muwerk/ustd
  * Limits to max 255 entries
  */
@@ -23,9 +23,9 @@ class arrayIterator {
         , position_{0} {
     }
 
-    arrayIterator(T * values_ptr, size_t size)
+    arrayIterator(T * values_ptr, size_t size_)
         : values_ptr_{values_ptr}
-        , position_{size} {
+        , position_{size_} {
     }
 
     bool operator!=(const arrayIterator<T> & other) const {
@@ -53,176 +53,154 @@ class arrayIterator {
 template <typename T>
 class array {
   private:
-    T *     arr;
-    uint8_t startSize;
-    uint8_t maxSize;
-    uint8_t incSize = ARRAY_INC_SIZE;
-    uint8_t allocSize;
-    uint8_t size;
-    T       bad;
-
-    T * ualloc(uint8_t n) {
-        return new T[n];
-    }
-    void ufree(T * p) {
-        delete[] p;
-    }
+    T *     arr_;
+    uint8_t startSize_;
+    uint8_t maxSize_;
+    uint8_t incSize_ = ARRAY_INC_SIZE;
+    uint8_t allocSize_;
+    uint8_t size_;
+    T       bad_;
 
   public:
-    array(uint8_t startSize = ARRAY_INIT_SIZE, uint8_t maxSize = ARRAY_MAX_SIZE, uint8_t incSize = ARRAY_INC_SIZE)
-        : startSize(startSize)
-        , maxSize(maxSize)
-        , incSize(incSize) {
-        /*!
-         * Constructs an array object. All allocation-hints are optional, the
-         * array class will allocate memory as needed during writes, if
-         * startSize!=maxSize.
-         * @param startSize The number of array entries that are allocated
-         * during object creation
-         * @param maxSize The maximal limit of records that will be allocated.
-         * If startSize < maxSize, the array size will grow automatically as
-         * needed.
-         * @param incSize The number of array entries that are allocated as a
-         * chunk if the array needs to grow
-         */
-        size = 0;
-        memset(&bad, 0, sizeof(bad));
-        if (maxSize < startSize)
-            maxSize = startSize;
-        allocSize = startSize;
-        arr       = ualloc(allocSize); // new T[allocSize];
+    // Constructs an array object. All allocation-hints are optional, the
+    // array class will allocate memory as needed during writes, if
+    // startSize_!=maxSize_.
+    // @param startSize_ The number of array entries that are allocated
+    // during object creation
+    // @param maxSize_ The maximal limit of records that will be allocated.
+    // If startSize_ < maxSize_, the array size_ will grow automatically as
+    // needed.
+    // @param incSize_ The number of array entries that are allocated as a
+    // chunk if the array needs to grow
+    array(uint8_t startSize_ = ARRAY_INIT_SIZE, uint8_t maxSize_ = ARRAY_MAX_SIZE, uint8_t incSize_ = ARRAY_INC_SIZE)
+        : startSize_(startSize_)
+        , maxSize_(maxSize_)
+        , incSize_(incSize_) {
+        size_ = 0;
+        memset(&bad_, 0, sizeof(bad_));
+        if (maxSize_ < startSize_)
+            maxSize_ = startSize_;
+        allocSize_ = startSize_;
+        arr_       = new T[allocSize_];
     }
 
     ~array() {
         /*! Free resources */
-        if (arr != nullptr) {
-            ufree(arr);
-            arr = nullptr;
+        if (arr_ != nullptr) {
+            delete[] arr_;
+            arr_ = nullptr;
         }
     }
 
+    // Change the array allocation size_. the new number of array entries, corresponding memory is allocated/free'd as necessary.
     bool resize(uint8_t newSize) {
-        /*! Change the array allocation size.
-         *
-         * Note: Usage of this function is optional for optimization. By
-         * default, all necessary allocations (and deallocations, if shrink=true
-         * during construction was set) are handled automatically.
-         * @param newSize the new number of array entries, corresponding memory
-         * is allocated/freed as necessary.
-         */
         uint8_t mv = newSize;
-        if (newSize > maxSize) {
-            if (maxSize == allocSize)
+        if (newSize > maxSize_) {
+            if (maxSize_ == allocSize_)
                 return false;
             else
-                newSize = maxSize;
+                newSize = maxSize_;
         }
-        if (newSize <= allocSize)
+        if (newSize <= allocSize_)
             return true;
-        T * arrn = ualloc(newSize); // new T[newSize];
+        T * arrn = new T[newSize];
         if (arrn == nullptr)
             return false;
         for (uint8_t i = 0; i < mv; i++) {
-            arrn[i] = arr[i];
+            arrn[i] = arr_[i];
         }
-        ufree(arr);
-        arr       = arrn;
-        allocSize = newSize;
+        delete[] arr_;
+        arr_       = arrn;
+        allocSize_ = newSize;
         return true;
     }
 
+    // Set the value for <T>entry that's given back,
+    // if read of an invalid index is requested.
+    // By default, an entry all memset to zero is given
+    // back. Using this function, the value of an invalid read can be configured.
+    // returns the value that is given back in case an invalid operation (e.g. read out of bounds) is tried
     void setInvalidValue(T & entryInvalidValue) {
-        /*! Set the value for <T>entry that's given back, if read of an invalid
-        index is requested. By default, an entry all memset to zero is given
-        back. Using this function, the value of an invalid read can be
-        configured.
-        * @param entryInvalidValue The value that is given back in case an
-        invalid operation (e.g. read out of bounds) is tried.
-        */
-        bad = entryInvalidValue;
+        bad_ = entryInvalidValue;
     }
 
-    int add(T & entry) {
-        /*! Append an array element after the current end of the array
-         * @param entry array element that is appended after the last current
-         * entry. The new array size must be smaller than maxSize as defined
-         * during array creation. New array memory is automatically allocated if
-         * within maxSize boundaries. */
-        if (size >= allocSize) {
-            if (incSize == 0)
+    // Append an array element after the current end of the array
+    // takes entry array element that is appended after the last current
+    // entry. The new array size_ must be smaller than maxSize_ as defined
+    // during array creation. New array memory is automatically allocated if
+    // within maxSize_ boundaries
+    int push(T & entry) {
+        if (size_ >= allocSize_) {
+            if (incSize_ == 0)
                 return -1;
-            if (!resize(allocSize + incSize))
+            if (!resize(allocSize_ + incSize_))
                 return -1;
         }
-        arr[size] = entry;
-        ++size;
-        return size - 1;
+        arr_[size_] = entry;
+        ++size_;
+        return size_ - 1;
     }
 
+    // Assign content of array element at i for const's
     T operator[](unsigned int i) const {
-        /*! Read content of array element at i, a=myArray[3] */
-        if (i >= allocSize) {
-            if (incSize == 0) {
+        if (i >= allocSize_) {
+            if (incSize_ == 0) {
 #ifdef USTD_ASSERT
-                assert(i < allocSize);
+                assert(i < allocSize_);
 #endif
             }
-            if (!resize(allocSize + incSize)) {
+            if (!resize(allocSize_ + incSize_)) {
 #ifdef USTD_ASSERT
-                assert(i < allocSize);
+                assert(i < allocSize_);
 #endif
             }
         }
-        if (i >= size && i <= allocSize)
-            size = i + 1;
-        if (i >= allocSize) {
-            return bad;
+        if (i >= size_ && i <= allocSize_)
+            size_ = i + 1;
+        if (i >= allocSize_) {
+            return bad_;
         }
-        return arr[i];
+        return arr_[i];
     }
 
+    // Assign content of array element at i
     T & operator[](unsigned int i) {
-        /*! Assign content of array element at i, e.g. myArray[3]=3 */
-        if (i >= allocSize) {
-            if (incSize == 0) {
+        if (i >= allocSize_) {
+            if (incSize_ == 0) {
 #ifdef USTD_ASSERT
-                assert(i < allocSize);
+                assert(i < allocSize_);
 #endif
             }
-            if (!resize(allocSize + incSize)) {
+            if (!resize(allocSize_ + incSize_)) {
 #ifdef USTD_ASSERT
-                assert(i < allocSize);
+                assert(i < allocSize_);
 #endif
             }
         }
-        if (i >= size && i <= allocSize)
-            size = i + 1;
-        if (i >= allocSize) {
-            return bad;
+        if (i >= size_ && i <= allocSize_)
+            size_ = i + 1;
+        if (i >= allocSize_) {
+            return bad_;
         }
-        return arr[i];
+        return arr_[i];
     }
 
-    bool isEmpty() const {
-        /*! Check, if array is empty.
-        @return true if array empty, false otherwise. s*/
-        if (size == 0)
+    // true if array empty, false otherwise
+    bool empty() const {
+        if (size_ == 0)
             return true;
         else
             return false;
     }
 
-    uint8_t length() const {
-        /*! Check number of array-members.
-        @return number of array entries */
-        return (size);
+    // return number of array elements
+    uint8_t size() const {
+        return (size_);
     }
 
+    // returns number of allocated entries which can be larger than the length of the array
     uint8_t alloclen() const {
-        /*! Check the number of allocated array-entries, which can be larger
-         * than the length of the array.
-         * @return number of allocated entries. */
-        return (allocSize);
+        return (allocSize_);
     }
 
     // // emplace
@@ -238,18 +216,18 @@ class array {
 
     // iterators
     arrayIterator<T> begin() {
-        return arrayIterator<T>(arr);
+        return arrayIterator<T>(arr_);
     }
     arrayIterator<T> end() {
-        return arrayIterator<T>(arr, size);
+        return arrayIterator<T>(arr_, size_);
     }
 
     arrayIterator<const T> begin() const {
-        return arrayIterator<const T>(arr);
+        return arrayIterator<const T>(arr_);
     }
 
     arrayIterator<const T> end() const {
-        return arrayIterator<const T>(arr, size);
+        return arrayIterator<const T>(arr_, size_);
     }
 };
 
