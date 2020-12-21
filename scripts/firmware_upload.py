@@ -12,4 +12,7 @@ def upload(source, target, env):
     if platform == 'esp8266':
         call(["cmd.exe", "/c", "C:\\Users\\Paul\\OneDrive\\Desktop\\esp8266_heaptest.bat"])
 
+    if platform == 'esp32':
+        call(["cmd.exe", "/c", "C:\\Users\\Paul\\OneDrive\\Desktop\\esp32_heaptest.bat"])
+
 env.AddPostAction("$BUILD_DIR/${PROGNAME}.bin", [upload])

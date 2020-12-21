@@ -22,8 +22,6 @@ std::string read_flash_string(const __FlashStringHelper * flash_str) {
 // 3 - uses C void * function pointer
 #define STRUCT_NUM 3
 
-/* structs */
-
 #if STRUCT_NUM == 2
 #include <functional>
 using mqtt_cmdfunction_p = std::function<void(const char * data, const int8_t id)>;
@@ -51,24 +49,22 @@ struct MQTTCmdFunction {
 };
 #endif
 
-/*
 // with constructor
-struct MQTTCmdFunction_constructor {
-    uint8_t                     device_type_;
-    uint8_t                     dummy1_;
-    const __FlashStringHelper * dummy2_;
-    const __FlashStringHelper * cmd_;
-    mqtt_cmdfunction_p          mqtt_cmdfunction_;
+// struct MQTTCmdFunction_constructor {
+//     uint8_t                     device_type_;
+//     uint8_t                     dummy1_;
+//     const __FlashStringHelper * dummy2_;
+//     const __FlashStringHelper * cmd_;
+//     mqtt_cmdfunction_p          mqtt_cmdfunction_;
 
-    MQTTCmdFunction1(uint8_t device_type, uint8_t dummy1, const __FlashStringHelper * dummy2, const __FlashStringHelper * cmd, mqtt_cmdfunction_p mqtt_cmdfunction)
-        : device_type_(device_type)
-        , dummy1_(dummy1)
-        , dummy2_(dummy2)
-        , cmd_(cmd)
-        , mqtt_cmdfunction_(mqtt_cmdfunction) {
-    }
-};
-*/
+//     MQTTCmdFunction1(uint8_t device_type, uint8_t dummy1, const __FlashStringHelper * dummy2, const __FlashStringHelper * cmd, mqtt_cmdfunction_p mqtt_cmdfunction)
+//         : device_type_(device_type)
+//         , dummy1_(dummy1)
+//         , dummy2_(dummy2)
+//         , cmd_(cmd)
+//         , mqtt_cmdfunction_(mqtt_cmdfunction) {
+//     }
+// };
 
 // std::vector
 // memory (since boot/of which is inplace) in bytes:
@@ -117,7 +113,7 @@ struct MQTTCmdFunction_constructor {
 // with 3
 //      3520, 0, frag 0%, 17 bytes per element
 #include "queue.h"
-static ustd::queue<MQTTCmdFunction> mqtt_cmdfunctions_ = ustd::queue<MQTTCmdFunction>(NUM_ENTRIES);
+static emsesp::queue<MQTTCmdFunction> mqtt_cmdfunctions_ = emsesp::queue<MQTTCmdFunction>(NUM_ENTRIES);
 
 // ustd array.h
 // memory (since boot/of which is inplace) in bytes:
@@ -133,9 +129,9 @@ static ustd::queue<MQTTCmdFunction> mqtt_cmdfunctions_ = ustd::queue<MQTTCmdFunc
 // conclusion: use C function pointers, try to avoid growing because of fragmentation. but it's not too bad.
 //
 // #include "array.h"
-// static ustd::array<MQTTCmdFunction> mqtt_cmdfunctions_ = ustd::array<MQTTCmdFunction>(NUM_ENTRIES, 255, 16);
-// static ustd::array<MQTTCmdFunction> mqtt_cmdfunctions_; // same as (16, 255, 16)
-// static ustd::array<MQTTCmdFunction> mqtt_cmdfunctions_ = ustd::array<MQTTCmdFunction>(100, 255, 16); // start 100 and grow
+// static emsesp::array<MQTTCmdFunction> mqtt_cmdfunctions_ = emsesp::array<MQTTCmdFunction>(NUM_ENTRIES, 255, 16);
+// static emsesp::array<MQTTCmdFunction> mqtt_cmdfunctions_; // same as (16, 255, 16)
+// static emsesp::array<MQTTCmdFunction> mqtt_cmdfunctions_ = emsesp::array<MQTTCmdFunction>(100, 255, 16); // start 100 and grow
 
 //
 // CODE below
@@ -147,7 +143,7 @@ void register_mqtt_cmd(uint8_t device_type, uint8_t dummy1, const __FlashStringH
     mf.dummy1_           = dummy1;
     mf.dummy2_           = dummy2;
     mf.cmd_              = cmd;
-    mf.mqtt_cmdfunction_ = f; // 2 - with using std::function, 3 with normal C function pointer
+    mf.mqtt_cmdfunction_ = f; // 2 - with using std::function or 3 with normal C function pointer
 
     // emplaces's
     // mqtt_cmdfunctions_.emplace_back(device_type, dummy1, dummy2, cmd, f); // std::list and std::vector
@@ -157,7 +153,7 @@ void register_mqtt_cmd(uint8_t device_type, uint8_t dummy1, const __FlashStringH
     // mqtt_cmdfunctions_.push_back(mf); // std::vector std::list
     // mqtt_cmdfunctions_.push_front(mf); // std::deque
 
-    mqtt_cmdfunctions_.push(mf); // ustd::queue and ustd::array std::queue
+    mqtt_cmdfunctions_.push(mf); // emsesp::queue and emsesp::array std::queue
 }
 
 // call back functions
@@ -175,10 +171,15 @@ void show_mem(const char * note) {
     delay(100);
     yield(); // wait for CPU to catchup
     uint32_t free_heap = ESP.getFreeHeap();
-    uint8_t  heap_frag = ESP.getHeapFragmentation();
-    mem_used           = heap_start_ - free_heap;
-    Serial.printf("(%10s) Free heap: %3d%% (%d) (~%d), frag:%d%% (~%d), used since boot: %d",
+#if defined ESP8266
+    uint8_t heap_frag = ESP.getHeapFragmentation();
+#else
+    uint8_t heap_frag = 0;
+#endif
+    mem_used = heap_start_ - free_heap;
+    Serial.printf("(%10s) started with %d, Free heap: %3d%% (%d) (~%d), frag:%d%% (~%d), used since boot: %d",
                   note,
+                  heap_start_,
                   (100 * free_heap / heap_start_),
                   free_heap,
                   (uint32_t)abs(free_heap - old_free_heap),
@@ -195,7 +196,7 @@ void show_mem(const char * note) {
 }
 
 // prints the contents of the queue
-void print_queue(const char * s, ustd::queue<uint8_t> & myQueue) {
+void print_queue(const char * s, emsesp::queue<uint8_t> & myQueue) {
     Serial.print(s);
     Serial.print(": ");
     for (const uint8_t & element : myQueue) {
@@ -206,6 +207,7 @@ void print_queue(const char * s, ustd::queue<uint8_t> & myQueue) {
     Serial.print(myQueue.size());
     Serial.println();
 
+    /*
     // old fashioned way
     Serial.print("traverse queue: ");
     for (uint8_t i = 0; i < myQueue.size(); i++) {
@@ -213,11 +215,12 @@ void print_queue(const char * s, ustd::queue<uint8_t> & myQueue) {
         Serial.print(", ");
     }
     Serial.println();
+    */
 }
 
 void queue_test() {
     // queue test
-    ustd::queue<uint8_t> myQueue = ustd::queue<uint8_t>(20);
+    emsesp::queue<uint8_t> myQueue = emsesp::queue<uint8_t>(20);
     myQueue.push(1);
     myQueue.push(3);
     myQueue.push(5);
@@ -241,13 +244,33 @@ void queue_test() {
     Serial.print("Popping, Got ");
     Serial.println(myQueue.pop());
 
-    // queue test2
+    // queue test2 - push_front on empty
     Serial.println();
-    ustd::queue<uint8_t> myQueue2 = ustd::queue<uint8_t>(20);
+    emsesp::queue<uint8_t> myQueue2 = emsesp::queue<uint8_t>(20);
     myQueue2.push_front(44);
     print_queue("add 44 to front", myQueue2);
     Serial.print("Popping, Got ");
     Serial.println(myQueue2.pop());
+
+    // queue test3 - replace top when full
+    Serial.println();
+    emsesp::queue<uint8_t> myQueue3 = emsesp::queue<uint8_t>(5);
+    myQueue3.push(11);
+    myQueue3.push(21);
+    myQueue3.push(31);
+    myQueue3.push(41);
+    bool a = myQueue3.push(51);
+    Serial.print("Returns ");
+    Serial.println(a);
+    print_queue("5 elements (max)", myQueue3);
+    bool b = myQueue3.push(61);
+    Serial.print("Adding 61. Returns ");
+    Serial.println(b);
+    print_queue("5 elements (max)", myQueue3);
+    Serial.print("Popping, Got ");
+    Serial.println(myQueue3.pop());
+    Serial.print("Popping, Got ");
+    Serial.println(myQueue3.pop());
 }
 
 void setup() {
@@ -293,6 +316,8 @@ void setup() {
     Serial.println();
 
     queue_test();
+
+    Serial.println();
 }
 
 void loop() {

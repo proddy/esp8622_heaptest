@@ -6,7 +6,7 @@
 
 #pragma once
 
-namespace ustd {
+namespace emsesp {
 
 template <typename T>
 class queueIterator {
@@ -45,8 +45,8 @@ class queue {
     uint8_t peakSize_;
     uint8_t maxSize_;
     uint8_t size_;
-    uint8_t quePtr0_; // back
-    uint8_t quePtr1_; // front
+    uint8_t quePtrFront_; // back
+    uint8_t quePtrBack_;  // front
     T       bad_;
 
   public:
@@ -54,11 +54,11 @@ class queue {
     queue(uint8_t maxQueueSize)
         : maxSize_(maxQueueSize) {
         memset(&bad_, 0, sizeof(bad_));
-        quePtr0_  = 0;
-        quePtr1_  = 0;
-        size_     = 0;
-        peakSize_ = 0;
-        que_      = (T *)malloc(sizeof(T) * maxSize_);
+        quePtrFront_ = 0;
+        quePtrBack_  = 0;
+        size_        = 0;
+        peakSize_    = 0;
+        que_         = (T *)malloc(sizeof(T) * maxSize_);
         if (que_ == nullptr)
             maxSize_ = 0;
     }
@@ -72,13 +72,19 @@ class queue {
     }
 
     // Push a new entry into the queue.
-    // true on success, false if queue is full
+    // true on success, false if queue is full, then the element is relaced with the front one
     bool push(T ent) {
+        Serial.print("quePtrFront_: ");
+        Serial.print(quePtrFront_);
+        Serial.print(" quePtrBack_: ");
+        Serial.print(quePtrBack_);
+        Serial.println();
         if (size_ >= maxSize_) {
+            // que_[quePtrFront_] = ent;
             return false;
         }
-        que_[quePtr1_] = ent;
-        quePtr1_       = (quePtr1_ + 1) % maxSize_;
+        que_[quePtrBack_] = ent;
+        quePtrBack_       = (quePtrBack_ + 1) % maxSize_;
         ++size_;
         if (size_ > peakSize_) {
             peakSize_ = size_;
@@ -97,17 +103,17 @@ class queue {
         if (size_ >= maxSize_) {
             return false;
         }
-        // Serial.print("pointer1: ");
-        // Serial.print(quePtr0_);
-        // Serial.print(" pointer2: ");
-        // Serial.print(quePtr1_);
+        // Serial.print("quePtrFront_: ");
+        // Serial.print(quePtrFront_);
+        // Serial.print(" quePtrBack_: ");
+        // Serial.print(quePtrBack_);
         // Serial.println();
 
         for (uint8_t i = 0; i <= size_; i++) {
-            que_[quePtr1_ - i + 1] = que_[quePtr1_ - i]; // move the rest up 1
+            que_[quePtrBack_ - i + 1] = que_[quePtrBack_ - i]; // move the rest up 1
         }
-        que_[quePtr0_] = ent; // add the new one
-        quePtr1_       = (quePtr1_ + 1) % maxSize_;
+        que_[quePtrFront_] = ent; // add the new one
+        quePtrBack_        = (quePtrBack_ + 1) % maxSize_;
         ++size_;
         if (size_ > peakSize_) {
             peakSize_ = size_;
@@ -116,15 +122,15 @@ class queue {
     }
 
     T & operator[](unsigned int i) {
-        return que_[i + quePtr0_];
+        return que_[i + quePtrFront_];
     }
 
     // Pop the oldest entry from the queue
     T pop() {
         if (size_ == 0)
             return bad_;
-        T ent    = que_[quePtr0_];
-        quePtr0_ = (quePtr0_ + 1) % maxSize_;
+        T ent        = que_[quePtrFront_];
+        quePtrFront_ = (quePtrFront_ + 1) % maxSize_;
         --size_;
         return ent;
     }
@@ -161,19 +167,19 @@ class queue {
 
     // iterators
     queueIterator<T> begin() {
-        return queueIterator<T>(que_, quePtr0_);
+        return queueIterator<T>(que_, quePtrFront_);
     }
     queueIterator<T> end() {
-        return queueIterator<T>(que_, quePtr0_ + size_);
+        return queueIterator<T>(que_, quePtrFront_ + size_);
     }
 
     queueIterator<const T> begin() const {
-        return queueIterator<const T>(que_, quePtr0_);
+        return queueIterator<const T>(que_, quePtrFront_);
     }
 
     queueIterator<const T> end() const {
-        return queueIterator<const T>(que_, quePtr0_ + size_);
+        return queueIterator<const T>(que_, quePtrFront_ + size_);
     }
 };
 
-} // namespace ustd
+} // namespace emsesp

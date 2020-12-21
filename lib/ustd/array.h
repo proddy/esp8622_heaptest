@@ -9,7 +9,7 @@
 #include <assert.h>
 #endif
 
-namespace ustd {
+namespace emsesp {
 
 #define ARRAY_INC_SIZE 16
 #define ARRAY_MAX_SIZE 255
@@ -232,4 +232,4 @@ class array {
 };
 
 
-} // namespace ustd
+} 
