@@ -260,6 +260,10 @@ void queue_test() {
     Serial.print("Popping, Got ");
     Serial.println(myQueue.pop());
 
+    print_queue("test it", myQueue);
+    print_queue("test it", myQueue);
+    print_queue("test it", myQueue);
+
     // queue test2 - push_front on empty
     Serial.println();
     emsesp::queue<uint8_t> myQueue2 = emsesp::queue<uint8_t>(20);
@@ -287,6 +291,7 @@ void queue_test() {
     Serial.println(myQueue3.pop());
     Serial.print("Popping, Got ");
     Serial.println(myQueue3.pop());
+    Serial.println();
 
     // test 4 constructor
     // emsesp::queue<MQTTCmdFunction_constructor> myQueue4 = emsesp::queue<MQTTCmdFunction_constructor>(5);
@@ -311,6 +316,7 @@ void queue_test() {
     Serial.println(myQueue5.size());
     auto new_mf_o = myQueue5.pop();
     (new_mf_o.mqtt_cmdfunction_)("callback otions", 19);
+    Serial.println();
 }
 
 void setup() {

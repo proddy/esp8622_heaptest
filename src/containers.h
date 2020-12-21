@@ -398,12 +398,11 @@ class array {
         return (allocSize_);
     }
 
-    // // emplace
+    // emplace
     // template <typename... Args>
     // void emplace1(Args... args) {
     //     add(args...);
     // };
-
     // template <class... Args>
     // void emplace(Args &&... args) {
     //     add(T(std::forward<Args>(args)...));
