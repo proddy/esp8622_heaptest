@@ -206,7 +206,6 @@ class queue {
 };
 
 
-
 template <typename T>
 class arrayIterator {
   public:
@@ -242,9 +241,10 @@ class arrayIterator {
     size_t position_;
 };
 
-#define ARRAY_INC_SIZE 16
-#define ARRAY_MAX_SIZE 255 // fixed for uint8_t
 #define ARRAY_INIT_SIZE 16
+#define ARRAY_MAX_SIZE 255 // fixed for uint8_t
+#define ARRAY_INC_SIZE 16
+
 template <typename T>
 class array {
   private:

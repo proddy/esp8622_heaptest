@@ -3,84 +3,13 @@
 #ifndef STANDALONE
 static uint32_t heap_start_   = ESP.getFreeHeap();
 static uint32_t old_free_heap = heap_start_;
-static uint32_t mem_used      = 0;
 #endif
 
-namespace uuid {
-std::string read_flash_string(const __FlashStringHelper * flash_str) {
-    std::string str(::strlen_P(reinterpret_cast<PGM_P>(flash_str)), '\0');
-    ::strncpy_P(&str[0], reinterpret_cast<PGM_P>(flash_str), str.capacity() + 1);
-    return str;
-}
-} // namespace uuid
+static uint32_t mem_used = 0;
 
-// NUM_ENTRIES
+#include "command.h"
+
 #define NUM_ENTRIES 200
-
-// STRUCT_NUM
-// 2 - uses std::function
-// 3 - uses C void * function pointer
-#define STRUCT_NUM 3
-
-#if STRUCT_NUM == 2
-#include <functional>
-using mqtt_cmdfunction_p = std::function<void(const char * data, const int8_t id)>;
-// no constructor, with std::function
-// size on ESP8266 - 28 bytes (ubuntu 56, osx 80)
-struct MQTTCmdFunction {
-    uint8_t                     device_type_;      // 1 byte
-    uint8_t                     dummy1_;           // 1 byte
-    const __FlashStringHelper * dummy2_;           // 4
-    const __FlashStringHelper * cmd_;              // 4
-    mqtt_cmdfunction_p          mqtt_cmdfunction_; // 14
-};
-#endif
-
-#if STRUCT_NUM == 3
-using mqtt_cmdfunction_p = void (*)(const char *, const int8_t);
-// no constructor, using C style function pointers instead of std::function
-// size on ESP8266 - 16 bytes (ubuntu 32, osx 32)
-struct MQTTCmdFunction {
-    uint8_t                     device_type_;      // 1 byte
-    uint8_t                     dummy1_;           // 1 byte
-    const __FlashStringHelper * dummy2_;           // 4
-    const __FlashStringHelper * cmd_;              // 4
-    mqtt_cmdfunction_p          mqtt_cmdfunction_; // 6
-};
-#endif
-
-#include <vector>
-using flash_string_vector = std::vector<const __FlashStringHelper *>;
-struct MQTTCmdFunction_options {
-    uint8_t                     device_type_;      // 1 byte
-    uint8_t                     dummy1_;           // 1 byte
-    const __FlashStringHelper * dummy2_;           // 4
-    flash_string_vector         options_;          // removed const
-    const __FlashStringHelper * cmd_;              // 4
-    mqtt_cmdfunction_p          mqtt_cmdfunction_; // 6
-};
-
-
-// with constructor
-struct MQTTCmdFunction_constructor {
-    uint8_t                     device_type_;
-    uint8_t                     dummy1_;
-    const __FlashStringHelper * dummy2_;
-    const __FlashStringHelper * cmd_;
-    mqtt_cmdfunction_p          mqtt_cmdfunction_;
-
-    MQTTCmdFunction_constructor(uint8_t                     device_type,
-                                uint8_t                     dummy1,
-                                const __FlashStringHelper * dummy2,
-                                const __FlashStringHelper * cmd,
-                                mqtt_cmdfunction_p          mqtt_cmdfunction)
-        : device_type_(device_type)
-        , dummy1_(dummy1)
-        , dummy2_(dummy2)
-        , cmd_(cmd)
-        , mqtt_cmdfunction_(mqtt_cmdfunction) {
-    }
-};
 
 // std::vector
 // memory (since boot/of which is inplace) in bytes:
@@ -128,8 +57,8 @@ struct MQTTCmdFunction_constructor {
 //      TBD
 // with 3
 //      3520, 0, frag 0%, 17 bytes per element
-#include "containers.h"
-static emsesp::queue<MQTTCmdFunction> mqtt_cmdfunctions_ = emsesp::queue<MQTTCmdFunction>(NUM_ENTRIES);
+// #include "containers.h"
+// static emsesp::queue<MQTTCmdFunction> mqtt_cmdfunctions_ = emsesp::queue<MQTTCmdFunction>(NUM_ENTRIES);
 
 // ustd array.h
 // memory (since boot/of which is inplace) in bytes:
@@ -152,25 +81,6 @@ static emsesp::queue<MQTTCmdFunction> mqtt_cmdfunctions_ = emsesp::queue<MQTTCmd
 //
 // CODE below
 //
-
-void register_mqtt_cmd(uint8_t device_type, uint8_t dummy1, const __FlashStringHelper * dummy2, const __FlashStringHelper * cmd, mqtt_cmdfunction_p f) {
-    MQTTCmdFunction mf;
-    mf.device_type_      = device_type;
-    mf.dummy1_           = dummy1;
-    mf.dummy2_           = dummy2;
-    mf.cmd_              = cmd;
-    mf.mqtt_cmdfunction_ = f; // 2 - with using std::function or 3 with normal C function pointer
-
-    // emplaces's
-    // mqtt_cmdfunctions_.emplace_back(device_type, dummy1, dummy2, cmd, f); // std::list and std::vector
-    // mqtt_cmdfunctions_.emplace(device_type, dummy1, dummy2, cmd, f); // std::queue
-    // mqtt_cmdfunctions_.emplace_back(device_type, dummy1, dummy2, cmd, f); // std::deque
-
-    // mqtt_cmdfunctions_.push_back(mf); // std::vector std::list
-    // mqtt_cmdfunctions_.push_front(mf); // std::deque
-
-    mqtt_cmdfunctions_.push(mf); // emsesp::queue and emsesp::array std::queue
-}
 
 // call back functions
 void myFunction(const char * data, const int8_t id) {
@@ -234,6 +144,7 @@ void print_queue(const char * s, emsesp::queue<uint8_t> & myQueue) {
     */
 }
 
+// local tests
 void queue_test() {
     // queue test
     emsesp::queue<uint8_t> myQueue = emsesp::queue<uint8_t>(20);
@@ -293,30 +204,6 @@ void queue_test() {
     Serial.println(myQueue3.pop());
     Serial.println();
 
-    // test 4 constructor
-    // emsesp::queue<MQTTCmdFunction_constructor> myQueue4 = emsesp::queue<MQTTCmdFunction_constructor>(5);
-    // MQTTCmdFunction_constructor mf_c;
-    // mf_c.device_type_ = 12;
-    // mf_c.dummy1_      = 13;
-    // mf_c.dummy2_      = F("dummy2");
-    // mf_c.cmd_         = F("cmd");
-    // mf.mqtt_cmdfunction_ = f; // 2 - with using std::function or 3 with normal C function pointer
-
-    // test 5 options
-    emsesp::queue<MQTTCmdFunction_options> myQueue5 = emsesp::queue<MQTTCmdFunction_options>(5);
-    MQTTCmdFunction_options                mf_o;
-    mf_o.device_type_      = 12;
-    mf_o.dummy1_           = 13;
-    mf_o.dummy2_           = F("dummy2");
-    mf_o.options_          = flash_string_vector{F("off"), F("flow"), F("buffered flow"), F("buffer"), F("layered buffer")};
-    mf_o.cmd_              = F("cmd");
-    mf_o.mqtt_cmdfunction_ = myFunction;
-    myQueue5.push(mf_o);
-    Serial.print("Size ");
-    Serial.println(myQueue5.size());
-    auto new_mf_o = myQueue5.pop();
-    (new_mf_o.mqtt_cmdfunction_)("callback otions", 19);
-    Serial.println();
 }
 
 void setup() {
@@ -328,38 +215,47 @@ void setup() {
 #endif
     show_mem("boot");
 
+#ifndef STANDALONE
+    uint32_t before_free_heap = ESP.getFreeHeap();
+#endif
+
+    emsesp::Command device(2);
+
+    device.reserve(200, 255, 10);
+
     // fill container
     show_mem("before");
     for (uint8_t i = 1; i <= NUM_ENTRIES; i++) {
 #if STRUCT_NUM == 3
-        register_mqtt_cmd(i, 10, F("hi"), F("tf3"), myFunction);
+        if (i == 2) {
+            device.register_mqtt_cmd(i,
+                                     10,
+                                     F("hi"),
+                                     flash_string_vector{F("off"), F("flow"), F("buffered flow"), F("buffer"), F("layered buffer")},
+                                     F("tf3"),
+                                     myFunction);
+        } else if (i == 10) {
+            device.register_mqtt_cmd(i, 10, F("hi"), flash_string_vector{F("one")}, F("tf3"), myFunction);
+        } else {
+            device.register_mqtt_cmd(i, 10, F("hi"), flash_string_vector{}, F("tf3"), myFunction);
+        }
+
 #endif
 
 #if STRUCT_NUM == 2
         // register_mqtt_cmd(i, 10, F("hi"), F("tf2"), myFunction);
         // register_mqtt_cmd(i, 10, F("hi"), F("tf2"), std::bind(&myFunction, std::placeholders::_1, std::placeholders::_2));
-        register_mqtt_cmd(i, 10, F("hi"), F("tf2"), [](const char * data, const int8_t id) { myFunction(data, id); });
+        device.register_mqtt_cmd(i, 10, F("hi"), F("tf2"), [](const char * data, const int8_t id) { myFunction(data, id); });
 #endif
     }
     show_mem("after");
 
-    // using container iterators
-    Serial.print("number of elements = ");
-    Serial.print(mqtt_cmdfunctions_.size());
-    Serial.println();
-    for (const MQTTCmdFunction & mf : mqtt_cmdfunctions_) {
-        (mf.mqtt_cmdfunction_)(uuid::read_flash_string(mf.cmd_).c_str(), mf.device_type_);
-    }
-    Serial.println();
-
-    // sizes
-    Serial.print("size of struct = ");
-    Serial.print(sizeof(MQTTCmdFunction));
 #ifndef STANDALONE
-    Serial.print(", size per element = ");
-    Serial.print(mem_used / NUM_ENTRIES);
+    uint32_t after_free_heap = ESP.getFreeHeap();
+    device.print(before_free_heap - after_free_heap);
+#else
+    device.print(0);
 #endif
-    Serial.println();
 
     queue_test();
 
@@ -370,7 +266,7 @@ void loop() {
 #ifndef STANDALONE
     // see if memory dissapears
     static uint32_t last_memcheck_ = 0;
-    if (!last_memcheck_ || (millis() - last_memcheck_ > 10000)) { // 10 seconds
+    if (!last_memcheck_ || (millis() - last_memcheck_ > 20000)) { // 20 seconds
         last_memcheck_ = millis();
         show_mem("loop");
     }
