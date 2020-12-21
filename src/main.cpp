@@ -49,22 +49,38 @@ struct MQTTCmdFunction {
 };
 #endif
 
-// with constructor
-// struct MQTTCmdFunction_constructor {
-//     uint8_t                     device_type_;
-//     uint8_t                     dummy1_;
-//     const __FlashStringHelper * dummy2_;
-//     const __FlashStringHelper * cmd_;
-//     mqtt_cmdfunction_p          mqtt_cmdfunction_;
+#include <vector>
+using flash_string_vector = std::vector<const __FlashStringHelper *>;
+struct MQTTCmdFunction_options {
+    uint8_t                     device_type_;      // 1 byte
+    uint8_t                     dummy1_;           // 1 byte
+    const __FlashStringHelper * dummy2_;           // 4
+    flash_string_vector         options_;          // removed const
+    const __FlashStringHelper * cmd_;              // 4
+    mqtt_cmdfunction_p          mqtt_cmdfunction_; // 6
+};
 
-//     MQTTCmdFunction1(uint8_t device_type, uint8_t dummy1, const __FlashStringHelper * dummy2, const __FlashStringHelper * cmd, mqtt_cmdfunction_p mqtt_cmdfunction)
-//         : device_type_(device_type)
-//         , dummy1_(dummy1)
-//         , dummy2_(dummy2)
-//         , cmd_(cmd)
-//         , mqtt_cmdfunction_(mqtt_cmdfunction) {
-//     }
-// };
+
+// with constructor
+struct MQTTCmdFunction_constructor {
+    uint8_t                     device_type_;
+    uint8_t                     dummy1_;
+    const __FlashStringHelper * dummy2_;
+    const __FlashStringHelper * cmd_;
+    mqtt_cmdfunction_p          mqtt_cmdfunction_;
+
+    MQTTCmdFunction_constructor(uint8_t                     device_type,
+                                uint8_t                     dummy1,
+                                const __FlashStringHelper * dummy2,
+                                const __FlashStringHelper * cmd,
+                                mqtt_cmdfunction_p          mqtt_cmdfunction)
+        : device_type_(device_type)
+        , dummy1_(dummy1)
+        , dummy2_(dummy2)
+        , cmd_(cmd)
+        , mqtt_cmdfunction_(mqtt_cmdfunction) {
+    }
+};
 
 // std::vector
 // memory (since boot/of which is inplace) in bytes:
@@ -112,7 +128,7 @@ struct MQTTCmdFunction {
 //      TBD
 // with 3
 //      3520, 0, frag 0%, 17 bytes per element
-#include "queue.h"
+#include "containers.h"
 static emsesp::queue<MQTTCmdFunction> mqtt_cmdfunctions_ = emsesp::queue<MQTTCmdFunction>(NUM_ENTRIES);
 
 // ustd array.h
@@ -271,6 +287,30 @@ void queue_test() {
     Serial.println(myQueue3.pop());
     Serial.print("Popping, Got ");
     Serial.println(myQueue3.pop());
+
+    // test 4 constructor
+    // emsesp::queue<MQTTCmdFunction_constructor> myQueue4 = emsesp::queue<MQTTCmdFunction_constructor>(5);
+    // MQTTCmdFunction_constructor mf_c;
+    // mf_c.device_type_ = 12;
+    // mf_c.dummy1_      = 13;
+    // mf_c.dummy2_      = F("dummy2");
+    // mf_c.cmd_         = F("cmd");
+    // mf.mqtt_cmdfunction_ = f; // 2 - with using std::function or 3 with normal C function pointer
+
+    // test 5 options
+    emsesp::queue<MQTTCmdFunction_options> myQueue5 = emsesp::queue<MQTTCmdFunction_options>(5);
+    MQTTCmdFunction_options                mf_o;
+    mf_o.device_type_      = 12;
+    mf_o.dummy1_           = 13;
+    mf_o.dummy2_           = F("dummy2");
+    mf_o.options_          = flash_string_vector{F("off"), F("flow"), F("buffered flow"), F("buffer"), F("layered buffer")};
+    mf_o.cmd_              = F("cmd");
+    mf_o.mqtt_cmdfunction_ = myFunction;
+    myQueue5.push(mf_o);
+    Serial.print("Size ");
+    Serial.println(myQueue5.size());
+    auto new_mf_o = myQueue5.pop();
+    (new_mf_o.mqtt_cmdfunction_)("callback otions", 19);
 }
 
 void setup() {

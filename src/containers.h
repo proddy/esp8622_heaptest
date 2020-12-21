@@ -1,19 +1,211 @@
 /*
- * Lightweight c++11 array implementation
- * Based on https://github.com/muwerk/ustd
+ * EMS-ESP - https://github.com/proddy/EMS-ESP
+ * Copyright 2020  Paul Derbyshire
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#ifndef EMSESP_CONTAINERS_H
+#define EMSESP_CONTAINERS_H
+
+/*
+ * Lightweight queue & array
+ * Based ideas from https://github.com/muwerk/ustd
  * Limits to max 255 entries
  */
-#pragma once
 
-#if defined USTD_ASSERT
+#if defined EMSESP_ASSERT
 #include <assert.h>
 #endif
 
 namespace emsesp {
 
-#define ARRAY_INC_SIZE 16
-#define ARRAY_MAX_SIZE 255
-#define ARRAY_INIT_SIZE 16
+template <typename T>
+class queueIterator {
+  public:
+    queueIterator(T * values_ptr, uint8_t p)
+        : values_ptr_{values_ptr}
+        , position_{p} {
+    }
+
+    bool operator!=(const queueIterator<T> & other) const {
+        return !(*this == other);
+    }
+
+    bool operator==(const queueIterator<T> & other) const {
+        return position_ == other.position_;
+    }
+
+    queueIterator & operator++() {
+        ++position_;
+        return *this;
+    }
+
+    T & operator*() const {
+        return *(values_ptr_ + position_);
+    }
+
+  private:
+    T *     values_ptr_;
+    uint8_t position_;
+};
+
+template <class T>
+class queue {
+  private:
+    T *     que_;
+    uint8_t peakSize_;
+    uint8_t maxSize_;
+    uint8_t size_;
+    uint8_t quePtrFront_; // back
+    uint8_t quePtrBack_;  // front
+    T       bad_;
+
+  public:
+    // Constructs a queue object with the maximum number of <T> pointer entries
+    queue(uint8_t maxQueueSize)
+        : maxSize_(maxQueueSize) {
+        memset(&bad_, 0, sizeof(bad_));
+        quePtrFront_ = 0;
+        quePtrBack_  = 0;
+        size_        = 0;
+        peakSize_    = 0;
+        que_         = (T *)malloc(sizeof(T) * maxSize_);
+        if (que_ == nullptr)
+            maxSize_ = 0;
+    }
+
+    // Deallocate the queue structure
+    ~queue() {
+        if (que_ != nullptr) {
+            free(que_);
+            que_ = nullptr;
+        }
+    }
+
+    // Push a new entry into the queue.
+    // true on success, false if queue is full, then the element is relaced with the front one
+    bool push(T ent) {
+        // Serial.print("quePtrFront_: ");
+        // Serial.print(quePtrFront_);
+        // Serial.print(" quePtrBack_: ");
+        // Serial.print(quePtrBack_);
+        // Serial.println();
+        if (size_ >= maxSize_) {
+            // que_[quePtrFront_] = ent;
+            return false;
+        }
+        que_[quePtrBack_] = ent;
+        quePtrBack_       = (quePtrBack_ + 1) % maxSize_;
+        ++size_;
+        if (size_ > peakSize_) {
+            peakSize_ = size_;
+        }
+        return true;
+    }
+
+    bool push_back(T ent) {
+        return push(ent);
+    }
+
+    // Push a new entry into the front of queue, moving the rest down
+    // true on success, false if queue is full
+    // there are no good checks for overflow
+    bool push_front(T ent) {
+        if (size_ >= maxSize_) {
+            return false;
+        }
+        // Serial.print("quePtrFront_: ");
+        // Serial.print(quePtrFront_);
+        // Serial.print(" quePtrBack_: ");
+        // Serial.print(quePtrBack_);
+        // Serial.println();
+
+        for (uint8_t i = 0; i <= size_; i++) {
+            que_[quePtrBack_ - i + 1] = que_[quePtrBack_ - i]; // move the rest up 1
+        }
+        que_[quePtrFront_] = ent; // add the new one
+        quePtrBack_        = (quePtrBack_ + 1) % maxSize_;
+        ++size_;
+        if (size_ > peakSize_) {
+            peakSize_ = size_;
+        }
+        return true;
+    }
+
+    T & operator[](uint8_t i) {
+        return que_[i + quePtrFront_];
+    }
+
+    // Pop the oldest entry from the queue
+    T pop() {
+        if (size_ == 0)
+            return bad_;
+        T ent        = que_[quePtrFront_];
+        quePtrFront_ = (quePtrFront_ + 1) % maxSize_;
+        --size_;
+        return ent;
+    }
+
+    // alias pop_front to keep backwards compatibility with std::list/queue
+    T pop_front() {
+        pop();
+    }
+
+    // Set the value for <T>entry that's given back, if read from an empty
+    // queue is requested. By default, an entry all memset to zero is given
+    // back. Using this function, the value of an invalid read can be configured
+    void setInvalidValue(T & entryInvalidValue) {
+        bad_ = entryInvalidValue;
+    }
+
+    // returns true: queue empty, false: not empty
+    bool empty() {
+        if (size_ == 0)
+            return true;
+        else
+            return false;
+    }
+
+    // returns number of entries in the queue
+    uint8_t size() {
+        return (size_);
+    }
+
+    // max number of queue entries that have been in the queue
+    uint8_t peak() {
+        return (peakSize_);
+    }
+
+    // iterators
+    queueIterator<T> begin() {
+        return queueIterator<T>(que_, quePtrFront_);
+    }
+    queueIterator<T> end() {
+        return queueIterator<T>(que_, quePtrFront_ + size_);
+    }
+
+    queueIterator<const T> begin() const {
+        return queueIterator<const T>(que_, quePtrFront_);
+    }
+
+    queueIterator<const T> end() const {
+        return queueIterator<const T>(que_, quePtrFront_ + size_);
+    }
+};
+
+
 
 template <typename T>
 class arrayIterator {
@@ -50,6 +242,9 @@ class arrayIterator {
     size_t position_;
 };
 
+#define ARRAY_INC_SIZE 16
+#define ARRAY_MAX_SIZE 255 // fixed for uint8_t
+#define ARRAY_INIT_SIZE 16
 template <typename T>
 class array {
   private:
@@ -142,15 +337,15 @@ class array {
     }
 
     // Assign content of array element at i for const's
-    T operator[](unsigned int i) const {
+    T operator[](uint8_t i) const {
         if (i >= allocSize_) {
             if (incSize_ == 0) {
-#ifdef USTD_ASSERT
+#ifdef EMSESP_ASSERT
                 assert(i < allocSize_);
 #endif
             }
             if (!resize(allocSize_ + incSize_)) {
-#ifdef USTD_ASSERT
+#ifdef EMSESP_ASSERT
                 assert(i < allocSize_);
 #endif
             }
@@ -164,15 +359,15 @@ class array {
     }
 
     // Assign content of array element at i
-    T & operator[](unsigned int i) {
+    T & operator[](uint8_t i) {
         if (i >= allocSize_) {
             if (incSize_ == 0) {
-#ifdef USTD_ASSERT
+#ifdef EMSESP_ASSERT
                 assert(i < allocSize_);
 #endif
             }
             if (!resize(allocSize_ + incSize_)) {
-#ifdef USTD_ASSERT
+#ifdef EMSESP_ASSERT
                 assert(i < allocSize_);
 #endif
             }
@@ -231,5 +426,6 @@ class array {
     }
 };
 
+} // namespace emsesp
 
-} 
+#endif
