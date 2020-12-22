@@ -9,8 +9,6 @@ static uint32_t mem_used = 0;
 
 #include "command.h"
 
-#define NUM_ENTRIES 200
-
 // std::vector
 // memory (since boot/of which is inplace) in bytes:
 // with 2 (C style function pointers)
@@ -203,7 +201,6 @@ void queue_test() {
     Serial.print("Popping, Got ");
     Serial.println(myQueue3.pop());
     Serial.println();
-
 }
 
 void setup() {
@@ -221,7 +218,7 @@ void setup() {
 
     emsesp::Command device(2);
 
-    device.reserve(200, 255, 10);
+    device.reserve(NUM_ENTRIES, 255, 10); // grow by 10, max size 255
 
     // fill container
     show_mem("before");
@@ -248,6 +245,7 @@ void setup() {
         device.register_mqtt_cmd(i, 10, F("hi"), F("tf2"), [](const char * data, const int8_t id) { myFunction(data, id); });
 #endif
     }
+
     show_mem("after");
 
 #ifndef STANDALONE

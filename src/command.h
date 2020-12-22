@@ -5,12 +5,19 @@
 // 3 - uses C void * function pointer
 #define STRUCT_NUM 3
 
+#define NUM_ENTRIES 200
+
 #include <Arduino.h>
 
 #include "containers.h"
 
 #include <vector> // for flash_vectors
 using flash_string_vector = std::vector<const __FlashStringHelper *>;
+
+// for all the tests
+#include <list>
+#include <queue>
+#include <deque>
 
 namespace emsesp {
 
@@ -59,18 +66,40 @@ class Command {
 
     void print(uint32_t mem_used);
 
-    void reserve(uint8_t elements, uint8_t max, uint8_t grow);
+    // note assignment must be static
+    void reserve(uint8_t elements, uint8_t max, uint8_t grow) {
+        static auto a = emsesp::array<MQTTCmdFunction>(elements, max, grow); // emsesp::array
+        // static auto a = std::vector<MQTTCmdFunction>();                      // std::vector
+        // static auto a = std::queue<MQTTCmdFunction>(elements);               // std::queue
+        // static auto a = emsesp::queue<MQTTCmdFunction>(elements);            // emsesp::vector
 
-    const emsesp::array<MQTTCmdFunction> * get_container() const {
-        return mqtt_cmdfunctions_;
+        mqtt_cmdfunctions_ = &a;
     }
+
+    //  emsesp::array<MQTTCmdFunction> mqtt_cmdfunctions()  {
+    //     return *mqtt_cmdfunctions_;
+    // }
+
+    // const emsesp::queue<MQTTCmdFunction> mqtt_cmdfunctions() const {
+    //     return mqtt_cmdfunctions_;
+    // }
+
+    // const emsesp::queue<MQTTCmdFunction> mqtt_cmdfunctions() const {
+    //     return *mqtt_cmdfunctions_;
+    // }
 
 
   private:
     uint8_t style_ = STRUCT_NUM;
 
-    // 3: 200,255,16 , 3208, 16 bytes per element
+    // 3: 200,255,16  5640, 28 bytes per element
     emsesp::array<MQTTCmdFunction> * mqtt_cmdfunctions_;
+
+    // 3: empty, 7208, 36 bytes per element
+    // std::vector<MQTTCmdFunction> * mqtt_cmdfunctions_;
+
+    // 3: ?, ?, ? bytes per element
+    // emsesp::queue<MQTTCmdFunction> mqtt_cmdfunctions_;
 };
 
 } // namespace emsesp

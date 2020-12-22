@@ -33,13 +33,22 @@ void Command::register_mqtt_cmd(uint8_t                     device_type,
     // mqtt_cmdfunctions_.push_back(mf); // std::vector std::list
     // mqtt_cmdfunctions_.push_front(mf); // std::deque
 
-    mqtt_cmdfunctions_->push(mf); // emsesp::queue, emsesp::array, std::queue
+    // mqtt_cmdfunctions().push(mf); // emsesp::queue, emsesp::array, std::queue
+
+    mqtt_cmdfunctions_->push(mf);
+
+    // mqtt_cmdfunctions_->push_back(mf); // std::queue
 }
 
+// print stuff
 void Command::print(uint32_t mem_used) {
-    // using container iterators
     Serial.println();
-    for (const MQTTCmdFunction & mf : *mqtt_cmdfunctions_) {
+
+    uint8_t size_elements = mqtt_cmdfunctions_->size();
+
+    for (uint8_t i = 0; i < size_elements; i++) {
+        auto mf = (*mqtt_cmdfunctions_)[i];
+        // for (const MQTTCmdFunction & mf : mqtt_cmdfunctions()) { // using iterator
         (mf.mqtt_cmdfunction_)(uuid::read_flash_string(mf.cmd_).c_str(), mf.device_type_);
         // see if we have options
         if (mf.options_.size() != 0) {
@@ -53,9 +62,6 @@ void Command::print(uint32_t mem_used) {
     }
     Serial.println();
     Serial.println();
-
-    // sizes
-    uint8_t size_elements = mqtt_cmdfunctions_->size();
     Serial.print("number of elements = ");
     Serial.print(size_elements);
     Serial.print(", total mem used = ");
@@ -70,10 +76,5 @@ void Command::print(uint32_t mem_used) {
     Serial.println();
 }
 
-void Command::reserve(uint8_t elements, uint8_t max, uint8_t grow) {
-    // must be static
-    static auto a      = emsesp::array<MQTTCmdFunction>(elements, max, grow);
-    mqtt_cmdfunctions_ = &a;
-}
 
 } // namespace emsesp
