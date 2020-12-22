@@ -30,23 +30,23 @@ class Command {
 
 #if STRUCT_NUM == 2
 #include <functional>
-    using mqtt_cmdfunction_p = std::function<void(const char * data, const int8_t id)>;
     // no constructor, with std::function
     // size on ESP8266 - 28 bytes (ubuntu 56, osx 80)
+    using mqtt_cmdfunction_p = std::function<void(const char * data, const int8_t id)>;
     struct MQTTCmdFunction {
         uint8_t                     device_type_;      // 1 byte
         uint8_t                     dummy1_;           // 1 byte
         const __FlashStringHelper * dummy2_;           // 4
-        flash_string_vector         options_;          //
+        const flash_string_vector   options_;          //
         const __FlashStringHelper * cmd_;              // 4
         mqtt_cmdfunction_p          mqtt_cmdfunction_; // 14
     };
 #endif
 
 #if STRUCT_NUM == 3
-    using mqtt_cmdfunction_p = void (*)(const char *, const int8_t);
     // no constructor, using C style function pointers instead of std::function
     // size on ESP8266 - 16 bytes (ubuntu 32, osx 32)
+    using mqtt_cmdfunction_p = void (*)(const char *, const int8_t);
     struct MQTTCmdFunction {
         uint8_t                     device_type_;      // 1 byte
         uint8_t                     dummy1_;           // 1 byte
@@ -68,12 +68,14 @@ class Command {
 
     // note assignment must be static
     void reserve(uint8_t elements, uint8_t max, uint8_t grow) {
-        static auto a = emsesp::array<MQTTCmdFunction>(elements, max, grow); // emsesp::array
         // static auto a = std::vector<MQTTCmdFunction>();                      // std::vector
         // static auto a = std::queue<MQTTCmdFunction>(elements);               // std::queue
-        // static auto a = emsesp::queue<MQTTCmdFunction>(elements);            // emsesp::vector
+        // static auto mqtt_cmdfunctions_ = emsesp::queue<MQTTCmdFunction>(elements); // emsesp::queue
 
-        mqtt_cmdfunctions_ = &a;
+        static auto a      = emsesp::array<MQTTCmdFunction>(elements, max, grow); // emsesp::array
+        mqtt_cmdfunctions_ = &a;                                                  // emsesp::array
+
+        // mqtt_cmdfunctions_ = a; // std::queue
     }
 
     //  emsesp::array<MQTTCmdFunction> mqtt_cmdfunctions()  {
@@ -96,10 +98,10 @@ class Command {
     emsesp::array<MQTTCmdFunction> * mqtt_cmdfunctions_;
 
     // 3: empty, 7208, 36 bytes per element
-    // std::vector<MQTTCmdFunction> * mqtt_cmdfunctions_;
+    // std::vector<MQTTCmdFunction> mqtt_cmdfunctions_;
 
     // 3: ?, ?, ? bytes per element
-    // emsesp::queue<MQTTCmdFunction> mqtt_cmdfunctions_;
+    // static emsesp::queue<MQTTCmdFunction> mqtt_cmdfunctions_ = emsesp::queue<MQTTCmdFunction>(200);
 };
 
 } // namespace emsesp

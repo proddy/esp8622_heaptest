@@ -1,5 +1,4 @@
 #include "command.h"
-#include "containers.h"
 
 namespace uuid {
 std::string read_flash_string(const __FlashStringHelper * flash_str) {
@@ -11,6 +10,8 @@ std::string read_flash_string(const __FlashStringHelper * flash_str) {
 
 namespace emsesp {
 
+static emsesp::queue<Command::MQTTCmdFunction> mqtt_cmdfunctions_ = emsesp::queue<Command::MQTTCmdFunction>(200);
+
 void Command::register_mqtt_cmd(uint8_t                     device_type,
                                 uint8_t                     dummy1,
                                 const __FlashStringHelper * dummy2,
@@ -18,10 +19,12 @@ void Command::register_mqtt_cmd(uint8_t                     device_type,
                                 const __FlashStringHelper * cmd,
                                 mqtt_cmdfunction_p          f) {
     MQTTCmdFunction mf;
-    mf.device_type_      = device_type;
-    mf.dummy1_           = dummy1;
-    mf.dummy2_           = dummy2;
-    mf.options_          = options;
+    mf.device_type_ = device_type;
+    mf.dummy1_      = dummy1;
+    mf.dummy2_      = dummy2;
+    // mf.options_     = std::move(flash_string_vector{F("a")});
+    mf.options_ = options;
+
     mf.cmd_              = cmd;
     mf.mqtt_cmdfunction_ = f; // 2 - with using std::function or 3 with normal C function pointer
 
@@ -35,19 +38,28 @@ void Command::register_mqtt_cmd(uint8_t                     device_type,
 
     // mqtt_cmdfunctions().push(mf); // emsesp::queue, emsesp::array, std::queue
 
-    mqtt_cmdfunctions_->push(mf);
+    mqtt_cmdfunctions_->push(mf); // emsesp::array
 
-    // mqtt_cmdfunctions_->push_back(mf); // std::queue
+    // mqtt_cmdfunctions_.push(mf); // emsesp::queue
+
+    // mqtt_cmdfunctions_.push_back(mf); // std::queue
 }
 
 // print stuff
 void Command::print(uint32_t mem_used) {
     Serial.println();
 
-    uint8_t size_elements = mqtt_cmdfunctions_->size();
+    // uint8_t size_elements = mqtt_cmdfunctions_.size(); // std::vector
+    uint8_t size_elements = mqtt_cmdfunctions_->size(); // emsesp::array
+
+    if (size_elements == 0) {
+        return;
+    }
 
     for (uint8_t i = 0; i < size_elements; i++) {
-        auto mf = (*mqtt_cmdfunctions_)[i];
+        // auto mf = (mqtt_cmdfunctions_)[i]; // emsesp::queue std::queue
+        auto mf = (*mqtt_cmdfunctions_)[i]; // emsesp::array
+
         // for (const MQTTCmdFunction & mf : mqtt_cmdfunctions()) { // using iterator
         (mf.mqtt_cmdfunction_)(uuid::read_flash_string(mf.cmd_).c_str(), mf.device_type_);
         // see if we have options

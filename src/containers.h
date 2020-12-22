@@ -16,14 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef EMSESP_CONTAINERS_H
-#define EMSESP_CONTAINERS_H
-
 /*
  * Lightweight queue & array
  * Based ideas from https://github.com/muwerk/ustd
  * Limits to max 255 entries
  */
+
+#ifndef EMSESP_CONTAINERS_H
+#define EMSESP_CONTAINERS_H
+
+#include <Arduino.h>
 
 #if defined EMSESP_ASSERT
 #include <assert.h>

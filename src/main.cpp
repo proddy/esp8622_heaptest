@@ -222,6 +222,11 @@ void setup() {
 
     // fill container
     show_mem("before");
+
+    // device.register_mqtt_cmd(1, 10, F("hi"), flash_string_vector{}, F("tf3"), myFunction);
+    // device.register_mqtt_cmd(2, 10, F("hi"), flash_string_vector{F("a")}, F("tf3"), myFunction);
+    // device.register_mqtt_cmd(3, 10, F("hi"), flash_string_vector{F("off"), F("flow"), F("buffered flow"), F("buffer"), F("layered buffer")}, F("tf3"), myFunction);
+
     for (uint8_t i = 1; i <= NUM_ENTRIES; i++) {
 #if STRUCT_NUM == 3
         if (i == 2) {
@@ -264,7 +269,7 @@ void loop() {
 #ifndef STANDALONE
     // see if memory dissapears
     static uint32_t last_memcheck_ = 0;
-    if (!last_memcheck_ || (millis() - last_memcheck_ > 20000)) { // 20 seconds
+    if (!last_memcheck_ || (millis() - last_memcheck_ > 10000)) { // 10 seconds
         last_memcheck_ = millis();
         show_mem("loop");
     }
