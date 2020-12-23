@@ -106,9 +106,11 @@ void show_mem(const char * note) {
                   heap_start_,
                   (100 * free_heap / heap_start_),
                   free_heap,
-                  (uint32_t)abs(free_heap - old_free_heap),
+                  2,
+                //   (uint32_t)abs(free_heap - old_free_heap),
                   heap_frag,
-                  (uint8_t)abs(heap_frag - old_heap_frag),
+                  2,
+                //   (uint8_t)abs(heap_frag - old_heap_frag),
                   mem_used);
     old_free_heap = free_heap;
     old_heap_frag = heap_frag;
@@ -261,6 +263,8 @@ void setup() {
 #endif
 
     queue_test();
+
+    // device.show_device_values();
 
     Serial.println();
 }

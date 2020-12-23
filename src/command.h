@@ -18,6 +18,7 @@ using flash_string_vector = std::vector<const __FlashStringHelper *>;
 #include <list>
 #include <queue>
 #include <deque>
+#include <string>
 
 namespace emsesp {
 
@@ -57,6 +58,14 @@ class Command {
     };
 #endif
 
+    void register_device_value(uint8_t                     tag,
+                               void *                      value_p,
+                               uint8_t                     type,
+                               const flash_string_vector & options,
+                               const __FlashStringHelper * short_name,
+                               const __FlashStringHelper * full_name,
+                               uint8_t                     uom);
+
     void register_mqtt_cmd(uint8_t                     device_type,
                            uint8_t                     dummy1,
                            const __FlashStringHelper * dummy2,
@@ -65,6 +74,8 @@ class Command {
                            mqtt_cmdfunction_p          f);
 
     void print(uint32_t mem_used);
+
+    void show_device_values();
 
     // note assignment must be static
     void reserve(uint8_t elements, uint8_t max, uint8_t grow) {

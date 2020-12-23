@@ -88,5 +88,20 @@ void Command::print(uint32_t mem_used) {
     Serial.println();
 }
 
+void Command::show_device_values() {
+    uint8_t total_s = 0;
+    uint8_t count   = 0;
+    char    ss[100];
+    for (const auto & dv : *(mqtt_cmdfunctions_)) {
+        uint8_t s = sizeof(dv);
+        snprintf_P(ss, 100, PSTR("[%s] %d"), uuid::read_flash_string(dv.cmd_).c_str(), s);
+        Serial.println(ss);
+        total_s += s;
+        count++;
+    }
+    snprintf_P(ss, 100, "Total size of %d elements: %d", count, total_s);
+    Serial.println(ss);
+}
+
 
 } // namespace emsesp
