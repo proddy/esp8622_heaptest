@@ -10,22 +10,23 @@ static uint32_t mem_used = 0;
 #include "command.h"
 
 // clang-format off
-// strings stored 32 bit aligned on ESP8266/ESP32
 #define MAKE_PSTR(string_name, string_literal) static const char __pstr__##string_name[] __attribute__((__aligned__(sizeof(uint32_t)))) PROGMEM = string_literal;
 #define MAKE_PSTR_WORD(string_name) MAKE_PSTR(string_name, #string_name)
 #define F_(string_name) FPSTR(__pstr__##string_name)
+#define MAKE_PSTR_LIST(list_name, ...) static const __FlashStringHelper * const __pstr__##list_name[] PROGMEM = {__VA_ARGS__, nullptr};
+#define FL_(list_name) (__pstr__##list_name)
 // clang-format on
 
-MAKE_PSTR(ten, "10");
-MAKE_PSTR(off, "off");
-MAKE_PSTR(flow, "flow");
-MAKE_PSTR(bufferedflow, "buffered flow");
-MAKE_PSTR(buffer, "buffered");
-MAKE_PSTR(layeredbuffer, "layered buffered");
+MAKE_PSTR(ten, "10")
+MAKE_PSTR(off, "off")
+MAKE_PSTR(flow, "flow")
+MAKE_PSTR(bufferedflow, "buffered flow")
+MAKE_PSTR(buffer, "buffered")
+MAKE_PSTR(layeredbuffer, "layered buffered")
 
-const __FlashStringHelper * const v1[] PROGMEM = {F_(ten), nullptr};
-const __FlashStringHelper * const v5[] PROGMEM = {F_(off), F_(flow), F_(bufferedflow), F_(buffer), F_(layeredbuffer), nullptr};
-const __FlashStringHelper * const v8[] PROGMEM = {F_(off), F_(flow), F_(bufferedflow), F_(buffer), F_(layeredbuffer), F_(bufferedflow), F_(buffer), F_(layeredbuffer), nullptr};
+MAKE_PSTR_LIST(v1, F_(off))
+MAKE_PSTR_LIST(v5, F_(off), F_(flow), F_(bufferedflow), F_(buffer), F_(layeredbuffer))
+MAKE_PSTR_LIST(v8, F_(off), F_(flow), F_(bufferedflow), F_(buffer), F_(layeredbuffer), F_(bufferedflow), F_(buffer), F_(layeredbuffer))
 
 // std::vector
 // memory (since boot/of which is inplace) in bytes:
@@ -248,9 +249,9 @@ void setup() {
     for (uint8_t i = 1; i <= NUM_ENTRIES; i++) {
 #if STRUCT_NUM == 3
         if (i < 20) {
-            device.register_mqtt_cmd(i, 10, F("hi"), v5, F("tf3"), myFunction);
+            device.register_mqtt_cmd(i, 10, F("hi"), FL_(v5), F("tf3"), myFunction);
         } else if ((i > 20) && (i < 40)) {
-            device.register_mqtt_cmd(i, 10, F("hi"), v1, F("tf3"), myFunction);
+            device.register_mqtt_cmd(i, 10, F("hi"), FL_(v1), F("tf3"), myFunction);
         } else {
             device.register_mqtt_cmd(i, 10, F("hi"), nullptr, F("tf3"), myFunction);
         }
