@@ -12,21 +12,31 @@ namespace emsesp {
 
 static emsesp::queue<Command::MQTTCmdFunction> mqtt_cmdfunctions_ = emsesp::queue<Command::MQTTCmdFunction>(200);
 
-void Command::register_mqtt_cmd(uint8_t                     device_type,
-                                uint8_t                     dummy1,
-                                const __FlashStringHelper * dummy2,
-                                const flash_string_vector & options,
-                                const __FlashStringHelper * cmd,
-                                mqtt_cmdfunction_p          f) {
+void Command::register_mqtt_cmd(uint8_t                             device_type,
+                                uint8_t                             dummy1,
+                                const __FlashStringHelper *         dummy2,
+                                const __FlashStringHelper * const * options,
+                                const __FlashStringHelper *         cmd,
+                                mqtt_cmdfunction_p                  f) {
     MQTTCmdFunction mf;
-    mf.device_type_ = device_type;
-    mf.dummy1_      = dummy1;
-    mf.dummy2_      = dummy2;
-    // mf.options_     = std::move(flash_string_vector{F("a")});
-    mf.options_ = options;
-
+    mf.device_type_      = device_type;
+    mf.dummy1_           = dummy1;
+    mf.dummy2_           = dummy2;
     mf.cmd_              = cmd;
     mf.mqtt_cmdfunction_ = f; // 2 - with using std::function or 3 with normal C function pointer
+
+    mf.options_      = options;
+    mf.options_size_ = 0;
+    if (options != nullptr) {
+        // count #options
+        uint8_t i = 0;
+        while (options[i++]) {
+            mf.options_size_++;
+        };
+        Serial.print("Got options size:");
+        Serial.print(mf.options_size_);
+        Serial.print(" ");
+    }
 
     // emplaces's
     // mqtt_cmdfunctions_.emplace_back(device_type, dummy1, dummy2, cmd, f); // std::list and std::vector
@@ -56,22 +66,26 @@ void Command::print(uint32_t mem_used) {
         return;
     }
 
+    // for (const MQTTCmdFunction & mf : mqtt_cmdfunctions()) { // using iterator
     for (uint8_t i = 0; i < size_elements; i++) {
         // auto mf = (mqtt_cmdfunctions_)[i]; // emsesp::queue std::queue
         auto mf = (*mqtt_cmdfunctions_)[i]; // emsesp::array
+        Serial.print("(");
 
-        // for (const MQTTCmdFunction & mf : mqtt_cmdfunctions()) { // using iterator
         (mf.mqtt_cmdfunction_)(uuid::read_flash_string(mf.cmd_).c_str(), mf.device_type_);
-        // see if we have options
-        if (mf.options_.size() != 0) {
-            for (uint8_t i = 0; i < mf.options_.size(); i++) {
-                auto a = mf.options_;
+
+        if (mf.options_) {
+            // see if we have options
+            for (uint8_t j = 0; j < mf.options_size_; j++) {
                 Serial.print("[");
-                Serial.print(uuid::read_flash_string(a[i]).c_str());
+                Serial.print(uuid::read_flash_string(mf.options_[j]).c_str());
                 Serial.print("]");
             }
         }
+
+        Serial.print(") ");
     }
+
     Serial.println();
     Serial.println();
     Serial.print("number of elements = ");

@@ -49,29 +49,22 @@ class Command {
     // size on ESP8266 - 16 bytes (ubuntu 32, osx 32)
     using mqtt_cmdfunction_p = void (*)(const char *, const int8_t);
     struct MQTTCmdFunction {
-        uint8_t                     device_type_;      // 1 byte
-        uint8_t                     dummy1_;           // 1 byte
-        const __FlashStringHelper * dummy2_;           // 4
-        flash_string_vector         options_;          // variable
-        const __FlashStringHelper * cmd_;              // 4
-        mqtt_cmdfunction_p          mqtt_cmdfunction_; // 6
+        uint8_t                             device_type_;      // 1 byte
+        uint8_t                             dummy1_;           // 1 byte
+        const __FlashStringHelper *         dummy2_;           // 4
+        const __FlashStringHelper * const * options_;          // ?
+        uint8_t                             options_size_;     // 1
+        const __FlashStringHelper *         cmd_;              // 4
+        mqtt_cmdfunction_p                  mqtt_cmdfunction_; // 6
     };
 #endif
 
-    void register_device_value(uint8_t                     tag,
-                               void *                      value_p,
-                               uint8_t                     type,
-                               const flash_string_vector & options,
-                               const __FlashStringHelper * short_name,
-                               const __FlashStringHelper * full_name,
-                               uint8_t                     uom);
-
-    void register_mqtt_cmd(uint8_t                     device_type,
-                           uint8_t                     dummy1,
-                           const __FlashStringHelper * dummy2,
-                           const flash_string_vector & options_,
-                           const __FlashStringHelper * cmd,
-                           mqtt_cmdfunction_p          f);
+    void register_mqtt_cmd(uint8_t                             device_type,
+                           uint8_t                             dummy1,
+                           const __FlashStringHelper *         dummy2,
+                           const __FlashStringHelper * const * options,
+                           const __FlashStringHelper *         cmd,
+                           mqtt_cmdfunction_p                  f);
 
     void print(uint32_t mem_used);
 

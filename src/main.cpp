@@ -9,6 +9,24 @@ static uint32_t mem_used = 0;
 
 #include "command.h"
 
+// clang-format off
+// strings stored 32 bit aligned on ESP8266/ESP32
+#define MAKE_PSTR(string_name, string_literal) static const char __pstr__##string_name[] __attribute__((__aligned__(sizeof(uint32_t)))) PROGMEM = string_literal;
+#define MAKE_PSTR_WORD(string_name) MAKE_PSTR(string_name, #string_name)
+#define F_(string_name) FPSTR(__pstr__##string_name)
+// clang-format on
+
+MAKE_PSTR(ten, "10");
+MAKE_PSTR(off, "off");
+MAKE_PSTR(flow, "flow");
+MAKE_PSTR(bufferedflow, "buffered flow");
+MAKE_PSTR(buffer, "buffered");
+MAKE_PSTR(layeredbuffer, "layered buffered");
+
+const __FlashStringHelper * const v1[] PROGMEM = {F_(ten), nullptr};
+const __FlashStringHelper * const v5[] PROGMEM = {F_(off), F_(flow), F_(bufferedflow), F_(buffer), F_(layeredbuffer), nullptr};
+const __FlashStringHelper * const v8[] PROGMEM = {F_(off), F_(flow), F_(bufferedflow), F_(buffer), F_(layeredbuffer), F_(bufferedflow), F_(buffer), F_(layeredbuffer), nullptr};
+
 // std::vector
 // memory (since boot/of which is inplace) in bytes:
 // with 2 (C style function pointers)
@@ -85,7 +103,11 @@ void myFunction(const char * data, const int8_t id) {
     Serial.print(data);
     Serial.print(" ");
     Serial.print(id);
-    Serial.print(" ");
+}
+
+// abs of a signed 32-bit integer
+uint32_t myabs(const int32_t i) {
+    return (i < 0 ? -i : i);
 }
 
 // print out heap memory
@@ -106,11 +128,9 @@ void show_mem(const char * note) {
                   heap_start_,
                   (100 * free_heap / heap_start_),
                   free_heap,
-                  2,
-                //   (uint32_t)abs(free_heap - old_free_heap),
+                  myabs(free_heap - old_free_heap),
                   heap_frag,
-                  2,
-                //   (uint8_t)abs(heap_frag - old_heap_frag),
+                  myabs(heap_frag - old_heap_frag),
                   mem_used);
     old_free_heap = free_heap;
     old_heap_frag = heap_frag;
@@ -225,23 +245,14 @@ void setup() {
     // fill container
     show_mem("before");
 
-    // device.register_mqtt_cmd(1, 10, F("hi"), flash_string_vector{}, F("tf3"), myFunction);
-    // device.register_mqtt_cmd(2, 10, F("hi"), flash_string_vector{F("a")}, F("tf3"), myFunction);
-    // device.register_mqtt_cmd(3, 10, F("hi"), flash_string_vector{F("off"), F("flow"), F("buffered flow"), F("buffer"), F("layered buffer")}, F("tf3"), myFunction);
-
     for (uint8_t i = 1; i <= NUM_ENTRIES; i++) {
 #if STRUCT_NUM == 3
-        if (i == 2) {
-            device.register_mqtt_cmd(i,
-                                     10,
-                                     F("hi"),
-                                     flash_string_vector{F("off"), F("flow"), F("buffered flow"), F("buffer"), F("layered buffer")},
-                                     F("tf3"),
-                                     myFunction);
-        } else if (i == 10) {
-            device.register_mqtt_cmd(i, 10, F("hi"), flash_string_vector{F("one")}, F("tf3"), myFunction);
+        if (i < 20) {
+            device.register_mqtt_cmd(i, 10, F("hi"), v5, F("tf3"), myFunction);
+        } else if ((i > 20) && (i < 40)) {
+            device.register_mqtt_cmd(i, 10, F("hi"), v1, F("tf3"), myFunction);
         } else {
-            device.register_mqtt_cmd(i, 10, F("hi"), flash_string_vector{}, F("tf3"), myFunction);
+            device.register_mqtt_cmd(i, 10, F("hi"), nullptr, F("tf3"), myFunction);
         }
 
 #endif
@@ -253,6 +264,7 @@ void setup() {
 #endif
     }
 
+    Serial.println();
     show_mem("after");
 
 #ifndef STANDALONE
