@@ -3,7 +3,7 @@
 
 // 2 - uses std::function
 // 3 - uses C void * function pointer
-#define STRUCT_NUM 3
+#define STRUCT_NUM 2
 
 #define NUM_ENTRIES 200
 
@@ -20,6 +20,10 @@ using flash_string_vector = std::vector<const __FlashStringHelper *>;
 #include <deque>
 #include <string>
 
+#if STRUCT_NUM == 2
+#include <functional>
+#endif
+
 namespace emsesp {
 
 class Command {
@@ -30,17 +34,17 @@ class Command {
         : style_(style){};
 
 #if STRUCT_NUM == 2
-#include <functional>
     // no constructor, with std::function
     // size on ESP8266 - 28 bytes (ubuntu 56, osx 80)
     using mqtt_cmdfunction_p = std::function<void(const char * data, const int8_t id)>;
     struct MQTTCmdFunction {
-        uint8_t                     device_type_;      // 1 byte
-        uint8_t                     dummy1_;           // 1 byte
-        const __FlashStringHelper * dummy2_;           // 4
-        const flash_string_vector   options_;          //
-        const __FlashStringHelper * cmd_;              // 4
-        mqtt_cmdfunction_p          mqtt_cmdfunction_; // 14
+        uint8_t                             device_type_;      // 1 byte
+        uint8_t                             dummy1_;           // 1 byte
+        const __FlashStringHelper *         dummy2_;           // 4
+        const __FlashStringHelper * const * options_;          // ?
+        uint8_t                             options_size_;     // 1
+        const __FlashStringHelper *         cmd_;              // 4
+        mqtt_cmdfunction_p                  mqtt_cmdfunction_; // 14
     };
 #endif
 

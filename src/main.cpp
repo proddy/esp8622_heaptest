@@ -261,7 +261,17 @@ void setup() {
 #if STRUCT_NUM == 2
         // register_mqtt_cmd(i, 10, F("hi"), F("tf2"), myFunction);
         // register_mqtt_cmd(i, 10, F("hi"), F("tf2"), std::bind(&myFunction, std::placeholders::_1, std::placeholders::_2));
-        device.register_mqtt_cmd(i, 10, F("hi"), F("tf2"), [](const char * data, const int8_t id) { myFunction(data, id); });
+        // device.register_mqtt_cmd(i, 10, F("hi"), F("tf2"), [](const char * data, const int8_t id) { myFunction(data, id); });
+
+        if (i < 20) {
+            device.register_mqtt_cmd(i, 10, F("hi"), FL_(v5), F("tf3"), myFunction);
+        } else if ((i > 20) && (i < 40)) {
+            device.register_mqtt_cmd(i, 10, F("hi"), FL_(v1), F("tf3"), myFunction);
+        } else {
+            device.register_mqtt_cmd(i, 10, F("hi"), nullptr, F("tf3"), myFunction);
+        }
+
+
 #endif
     }
 
